@@ -1,52 +1,61 @@
-# Beads Integration Component for BMAD Agents
-# Add these critical_actions to agent definitions
+# Beads Integration Component for BMAD Agents (v3)
+# Inject these into agent critical_actions
 
-# Principle: BMAD owns documents + status. Beads owns decisions + blockers.
+# Principle: BMAD owns formal workflow outputs. Beads owns runtime state.
 
 injectable_critical_actions:
   # Add to ALL agents
   all_agents:
-    - "At session start: `bd list --type decision` and `bd list --type blocker` to see what exists"
-    - "When making a choice that affects other agents: `bd create --type decision` immediately"
-    - "When blocked by external factor: `bd create --type blocker`"
+    - "At session start: `bd list --type decision` and `bd list --type blocker` to check runtime state"
+    - "For runtime decisions (made OUTSIDE workflows): `bd create --type decision`"
+    - "For external blockers: `bd create --type blocker`"
     - "At session end: `bd sync && git push` - work isn't done until pushed"
-    - "Always include DOC: path in Beads issue notes for recovery"
+    - "Include DOC: path in Beads notes to link back to BMAD docs"
 
-  # Add to PM agent
+  # Role-specific - PM
   pm:
-    - "After PRD validation: `bd create --title 'Phase: PRD Complete' --type epic`"
-    - "Scope/priority decisions: file as decision issue with rationale"
+    - "ADRs go in architecture.md (BMAD) - NOT in Beads"
+    - "Scope changes AFTER PRD is done → `bd create --type decision`"
+    - "Phase progress tracked by workflow-status.yaml - NOT Beads"
 
-  # Add to Architect agent
+  # Role-specific - Architect
   architect:
-    - "After architecture complete: `bd create --title 'Phase: Architecture Complete' --type epic`"
-    - "Each major ADR: `bd create --title 'ADR: {title}' --type decision`"
-    - "Technology choices: file with alternatives considered"
+    - "ADRs captured in architecture.md during workflow - NOT in Beads"
+    - "Post-architecture technology pivots → `bd create --type decision`"
 
-  # Add to SM agent
+  # Role-specific - SM
   sm:
-    - "After sprint planning: `bd create --title 'Phase: Sprint {n} Planned' --type epic`"
-    - "Story status changes: update sprint-status.yaml (NOT Beads)"
-    - "If story blocked: `bd create --type blocker`"
+    - "Story status in sprint-status.yaml - NOT Beads"
+    - "Sprint deferrals/priority changes → `bd create --type decision`"
+    - "Cross-story dependencies → `bd create --type blocker` or `bd dep add`"
 
-  # Add to DEV agent
+  # Role-specific - DEV
   dev:
-    - "Story status: update sprint-status.yaml (NOT Beads)"
-    - "Implementation decisions not in story: `bd create --type decision`"
-    - "Discovered blockers: `bd create --type blocker`"
+    - "Task checkboxes in story file - NOT Beads"
+    - "Mid-implementation discoveries → `bd create --type decision`"
+    - "External blockers → `bd create --type blocker`"
 
-# What NOT to put in Beads (keep in BMAD)
+# What NOT to track in Beads (BMAD handles these)
 do_not_track:
-  - "Individual stories (use sprint-status.yaml)"
-  - "Task checkboxes (use story file)"
-  - "Workflow step progress (use frontmatter)"
-  - "Code review comments (use PR system)"
-  - "Detailed requirements (live in docs)"
+  - "Phase completion (use bmm-workflow-status.yaml)"
+  - "ADRs (use architecture.md)"
+  - "Story status (use sprint-status.yaml)"
+  - "Task progress (use story file checkboxes)"
+  - "Workflow step progress (use frontmatter stepsCompleted)"
 
-# Human trigger phrases agents should recognize
+# What TO track in Beads (BMAD can't handle these)
+do_track:
+  - "Runtime decisions (choices made OUTSIDE formal workflows)"
+  - "External blockers (waiting on API, approvals, etc.)"
+  - "Cross-story dependencies (story A needs story B first)"
+
+# Trigger phrases for human interaction
 trigger_phrases:
-  "what decisions?": "bd list --type decision"
+  "what runtime decisions?": "bd list --type decision"
   "what's blocked?": "bd list --type blocker"
-  "file that decision": "bd create --type decision"
+  "file that as runtime decision": "bd create --type decision"
   "that's a blocker": "bd create --type blocker"
   "land the plane": "Session close protocol"
+
+# Notes format for context recovery
+notes_format: "WHO: {agent} | WHAT: {choice} | WHY: {reason} | DOC: {bmad_doc_path}"

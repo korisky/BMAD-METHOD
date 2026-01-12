@@ -1,159 +1,125 @@
 # BMAD + Beads Agent Instructions
 
-> **Principle**: BMAD owns documents + status. Beads owns decisions + blockers. No overlap.
+> **Principle**: BMAD owns formal workflow outputs. Beads owns runtime state.
 
 ---
 
 ## The Split
 
 ```
-BMAD = Documents + Story Status (sprint-status.yaml)
-Beads = Decisions + Dependencies + Blockers
+BMAD owns:
+├── Documents (PRD, Architecture, Stories)
+├── Story status (sprint-status.yaml)
+├── Phase progress (bmm-workflow-status.yaml)
+└── ADRs (in architecture.md)
+
+Beads owns:
+├── Runtime decisions (outside workflows)
+├── Blockers (external impediments)
+└── Cross-story dependencies
 ```
 
-**Why**: BMAD already tracks stories perfectly. Beads adds what BMAD can't do: persistent decisions and dependency tracking.
-
----
-
-## Quick Reference
-
-### BMAD (Story Status)
-```bash
-# Find what to work on
-cat {implementation}/sprint-status.yaml
-# Look for "ready-for-dev" status
-```
-
-### Beads (Decisions & Blockers)
-```bash
-bd list --type decision    # What choices were made?
-bd list --type blocker     # What's blocked?
-bd create --type decision  # Record a choice
-bd create --type blocker   # Record impediment
-bd sync                    # Sync with git
-```
+**Key**: Don't duplicate. BMAD workflows capture their outputs. Beads captures what happens BETWEEN workflows.
 
 ---
 
 ## When to Use Beads
 
-**Create a decision issue when:**
-- You choose between alternatives (e.g., "GraphQL over REST")
-- You narrow scope (e.g., "Removing feature X")
-- You make a tradeoff (e.g., "Speed over accuracy")
-- The choice affects other agents
+### Runtime Decisions (made OUTSIDE formal workflows)
+
+| Use Beads? | Scenario |
+|------------|----------|
+| **No** | Architect picks GraphQL (captured in ADR) |
+| **Yes** | DEV discovers mid-story: "need to refactor auth first" |
+| **Yes** | PM says during implementation: "drop feature X" |
+| **Yes** | SM decides: "defer this story to next sprint" |
 
 ```bash
-bd create --title "Decision: {summary}" --type decision --priority 2
-bd update <id> --notes "WHO: {agent} | WHAT: {choice} | WHY: {rationale} | DOC: {path}"
+bd create --title "Runtime: {summary}" --type decision
+bd update <id> --notes "WHO: {agent} | WHAT: {choice} | WHY: {reason} | DOC: {affected_doc}"
 ```
 
-**Create a blocker issue when:**
-- External dependency stops work
-- Need decision from someone else
-- Technical impediment discovered
+### Blockers (external impediments)
 
 ```bash
-bd create --title "Blocked: {issue}" --type blocker --priority 1
-bd update <id> --notes "AFFECTS: {story} | OWNER: {who} | DOC: {related_doc}"
+bd create --title "Blocked: {issue}" --type blocker
+bd update <id> --notes "AFFECTS: {story} | OWNER: {who} | ETA: {when}"
 ```
 
-**Create a phase issue at boundaries:**
+### Cross-Story Dependencies
+
 ```bash
-bd create --title "Phase: PRD Complete" --type epic
-bd update <id> --notes "DOC: docs/prd.md | FRs: {n}"
+bd create --title "Dep: {story-B} needs {story-A}" --type blocker
+bd update <id> --notes "BLOCKED: {B} | NEEDS: {A} done first | REASON: {why}"
 ```
 
 ---
 
 ## When NOT to Use Beads
 
-- Individual story tracking → use sprint-status.yaml
-- Task checkboxes → use story file `[ ]` marks
-- Code review comments → use PR system
-- Requirements details → live in PRD/Architecture docs
+| Don't Do | Why | BMAD Handles It |
+|----------|-----|-----------------|
+| "Phase: PRD Complete" epic | Duplicate | bmm-workflow-status.yaml |
+| Decision for each ADR | Duplicate | architecture.md |
+| Issues for stories | Duplicate | sprint-status.yaml |
+| Issues for tasks | Duplicate | Story file checkboxes |
 
 ---
 
 ## Session Start
 
 ```bash
-# 1. Beads auto-primes on session start (hook)
+# 1. Beads auto-primes (hook)
 
-# 2. Check for decisions and blockers
+# 2. Check runtime state
 bd list --type decision --status open
 bd list --type blocker --status open
 
 # 3. Find work from BMAD
-# Read sprint-status.yaml, find first ready-for-dev
-# Load that story file
+# Read bmm-workflow-status.yaml (phase progress)
+# Read sprint-status.yaml (story status)
+# Load the active story file
 ```
 
 ---
 
 ## Session End ("Land the Plane")
 
-**Work is NOT complete until pushed.**
-
 ```bash
-# 1. Update sprint-status.yaml if needed
+# 1. BMAD workflows auto-update their status files
 
-# 2. Sync and commit
+# 2. Beads sync
 bd sync
+
+# 3. Commit and push (MANDATORY)
 git add -A
 git commit -m "{message}"
-
-# 3. Push (MANDATORY)
 git push
 
 # 4. Verify
 git status    # Must show "up to date"
-
-# 5. Handoff
-bd list --type decision --status open
-bd list --type blocker --status open
 ```
 
 ---
 
-## Context Recovery (After /clear)
+## Trigger Phrases
 
-```bash
-# 1. Beads context auto-loads
-
-# 2. Get decisions
-bd list --type decision
-bd show <id>              # Notes have DOC: path
-
-# 3. Get blockers
-bd list --type blocker
-
-# 4. Find current work
-# Read sprint-status.yaml, find in-progress story
-# Read that story file
-```
-
----
-
-## Human Trigger Phrases
-
-| Say | Agent Does |
-|-----|------------|
-| "land the plane" | Session close → commit → push |
-| "what decisions?" | `bd list --type decision` |
+| Say | Action |
+|-----|--------|
+| "what runtime decisions?" | `bd list --type decision` |
 | "what's blocked?" | `bd list --type blocker` |
-| "file that decision" | `bd create --type decision` |
+| "file that as runtime decision" | `bd create --type decision` |
 | "that's a blocker" | `bd create --type blocker` |
+| "land the plane" | Session close |
 
 ---
 
-## 5 Rules
+## 4 Rules
 
-1. **Stories → sprint-status.yaml** (not Beads)
-2. **Decisions → Beads** (not scattered in docs)
-3. **Blockers → Beads** (not buried in notes)
-4. **DOC: path in notes** (enable recovery)
-5. **Push before done** (work isn't saved until pushed)
+1. **Formal decisions → ADRs** (BMAD architecture.md)
+2. **Runtime decisions → Beads** (outside workflow changes)
+3. **Blockers → Beads** (external impediments)
+4. **Push before done** (work not saved until pushed)
 
 ---
 
