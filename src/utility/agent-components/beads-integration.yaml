@@ -1,0 +1,52 @@
+# Beads Integration Component for BMAD Agents
+# Add these critical_actions to agent definitions
+
+# Principle: BMAD owns documents + status. Beads owns decisions + blockers.
+
+injectable_critical_actions:
+  # Add to ALL agents
+  all_agents:
+    - "At session start: `bd list --type decision` and `bd list --type blocker` to see what exists"
+    - "When making a choice that affects other agents: `bd create --type decision` immediately"
+    - "When blocked by external factor: `bd create --type blocker`"
+    - "At session end: `bd sync && git push` - work isn't done until pushed"
+    - "Always include DOC: path in Beads issue notes for recovery"
+
+  # Add to PM agent
+  pm:
+    - "After PRD validation: `bd create --title 'Phase: PRD Complete' --type epic`"
+    - "Scope/priority decisions: file as decision issue with rationale"
+
+  # Add to Architect agent
+  architect:
+    - "After architecture complete: `bd create --title 'Phase: Architecture Complete' --type epic`"
+    - "Each major ADR: `bd create --title 'ADR: {title}' --type decision`"
+    - "Technology choices: file with alternatives considered"
+
+  # Add to SM agent
+  sm:
+    - "After sprint planning: `bd create --title 'Phase: Sprint {n} Planned' --type epic`"
+    - "Story status changes: update sprint-status.yaml (NOT Beads)"
+    - "If story blocked: `bd create --type blocker`"
+
+  # Add to DEV agent
+  dev:
+    - "Story status: update sprint-status.yaml (NOT Beads)"
+    - "Implementation decisions not in story: `bd create --type decision`"
+    - "Discovered blockers: `bd create --type blocker`"
+
+# What NOT to put in Beads (keep in BMAD)
+do_not_track:
+  - "Individual stories (use sprint-status.yaml)"
+  - "Task checkboxes (use story file)"
+  - "Workflow step progress (use frontmatter)"
+  - "Code review comments (use PR system)"
+  - "Detailed requirements (live in docs)"
+
+# Human trigger phrases agents should recognize
+trigger_phrases:
+  "what decisions?": "bd list --type decision"
+  "what's blocked?": "bd list --type blocker"
+  "file that decision": "bd create --type decision"
+  "that's a blocker": "bd create --type blocker"
+  "land the plane": "Session close protocol"
