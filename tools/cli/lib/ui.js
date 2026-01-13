@@ -176,6 +176,7 @@ class UI {
     // Collect IDE tool selection early - we need this to know if we should ask about TTS
     let toolSelection;
     let agentVibesConfig = { enabled: false, alreadyInstalled: false };
+    let beadsConfig = { enabled: false, cliInstalled: false, alreadyInitialized: false };
     let claudeCodeSelected = false;
 
     if (!hasExistingInstall) {
@@ -201,6 +202,9 @@ class UI {
           agentVibesConfig = { enabled: true, alreadyInstalled: false };
         }
       }
+
+      // Ask about Beads integration (for all IDE selections)
+      beadsConfig = await this.promptBeadsIntegration(confirmedDirectory);
     }
 
     let customContentConfig = { hasCustomContent: false };
@@ -363,7 +367,10 @@ class UI {
           enableTts = enable;
         }
 
-        // Core config with existing defaults (ask after TTS)
+        // Beads integration - ask for all IDE selections
+        const updateBeadsConfig = await this.promptBeadsIntegration(confirmedDirectory);
+
+        // Core config with existing defaults (ask after TTS and Beads)
         const coreConfig = await this.collectCoreConfig(confirmedDirectory);
 
         return {
@@ -377,6 +384,8 @@ class UI {
           customContent: customModuleResult.customContentConfig,
           enableAgentVibes: enableTts,
           agentVibesInstalled: false,
+          enableBeads: updateBeadsConfig.enabled,
+          beadsCliInstalled: updateBeadsConfig.cliInstalled,
         };
       }
     }
@@ -449,6 +458,8 @@ class UI {
       customContent: customContentConfig,
       enableAgentVibes: agentVibesConfig.enabled,
       agentVibesInstalled: agentVibesConfig.alreadyInstalled,
+      enableBeads: beadsConfig.enabled,
+      beadsCliInstalled: beadsConfig.cliInstalled,
     };
   }
 
@@ -1195,6 +1206,84 @@ class UI {
     const playTtsPath = path.join(projectDir, '.claude', 'hooks', 'play-tts.sh');
 
     return (await fs.pathExists(hookPath)) && (await fs.pathExists(playTtsPath));
+  }
+
+  /**
+   * @function checkBeadsCliInstalled
+   * @intent Detect if Beads CLI (bd) is available on the system
+   * @why Allows showing helpful installation guidance and enabling beads integration
+   * @returns {Promise<boolean>} true if bd command is available, false otherwise
+   * @sideeffects None - read-only command check
+   * @calledby promptBeadsIntegration() to determine default value and show detection status
+   */
+  async checkBeadsCliInstalled() {
+    const { execSync } = require('node:child_process');
+    try {
+      execSync('bd --version', { stdio: 'ignore' });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * @function promptBeadsIntegration
+   * @intent Ask user if they want Beads runtime coordination integration
+   * @why Enables optional team coordination features without forcing them on users
+   * @param {string} projectDir - Absolute path to user's project directory
+   * @returns {Promise<Object>} Configuration object: { enabled: boolean, cliInstalled: boolean }
+   * @sideeffects None - pure user input collection
+   */
+  async promptBeadsIntegration(projectDir) {
+    const inquirer = await getInquirer();
+
+    // Check if Beads CLI is available
+    const beadsCli = await this.checkBeadsCliInstalled();
+
+    // Check if project already has Beads initialized
+    const beadsDir = path.join(projectDir, '.beads');
+    const beadsInitialized = await fs.pathExists(beadsDir);
+
+    console.log('');
+    console.log(chalk.magenta('🔗 Beads Integration'));
+    console.log(chalk.cyan('Beads provides runtime coordination for multi-agent/developer workflows:'));
+    console.log(chalk.dim('  • Story claiming to prevent concurrent edits'));
+    console.log(chalk.dim('  • Runtime decision tracking'));
+    console.log(chalk.dim('  • Blocker and HALT condition management'));
+    console.log('');
+
+    if (beadsCli) {
+      console.log(chalk.green('  ✓ Beads CLI (bd) detected'));
+    } else {
+      console.log(chalk.yellow('  ⚠ Beads CLI (bd) not found'));
+      console.log(chalk.dim('    Install from: https://github.com/steveyegge/beads'));
+    }
+
+    if (beadsInitialized) {
+      console.log(chalk.green('  ✓ Beads already initialized in project'));
+    }
+
+    const { enableBeads } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'enableBeads',
+        message: 'Enable Beads integration for runtime coordination?',
+        default: beadsCli, // Default to yes if CLI is available
+      },
+    ]);
+
+    if (enableBeads && !beadsCli) {
+      console.log(chalk.yellow('\n  ⚠ Beads CLI not installed'));
+      console.log(chalk.dim('  Agent instructions will be installed, but you\'ll need to install'));
+      console.log(chalk.dim('  the Beads CLI separately for full functionality:'));
+      console.log(chalk.dim('  https://github.com/steveyegge/beads\n'));
+    }
+
+    return {
+      enabled: enableBeads,
+      cliInstalled: beadsCli,
+      alreadyInitialized: beadsInitialized,
+    };
   }
 
   /**

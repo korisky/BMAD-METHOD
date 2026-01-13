@@ -187,6 +187,50 @@
     </check>
   </step>
 
+  <!-- BEADS INTEGRATION: Story Claiming (Optional) -->
+  <!-- This section only applies if Beads integration is enabled -->
+  <step n="3.5" goal="Check Beads story claim (optional)" tag="beads-coordination">
+    <check if="bd command is available AND .beads directory exists">
+      <action>Run `bd list --status in_progress --type task` to check for existing claims</action>
+
+      <check if="story {{story_key}} is NOT already claimed">
+        <output>⚠️ **Beads Coordination Reminder**
+
+          This story is not claimed in Beads. To prevent concurrent edit conflicts:
+          - Run `bd-claim "{{story_key}}"` to claim this story
+          - Or continue without claiming (for solo work)
+
+          💡 Claims help coordinate multi-agent/developer work.
+        </output>
+        <ask>Claim story with Beads? [y/n] (default: n for solo work)</ask>
+
+        <check if="user chooses 'y' or 'yes'">
+          <action>Run `bd-claim "{{story_key}}"` to claim the story</action>
+          <action>Store claim ID for later release</action>
+          <output>✓ Story claimed: {{story_key}}</output>
+        </check>
+      </check>
+
+      <check if="story {{story_key}} IS already claimed by another agent/developer">
+        <output>🛑 **Concurrent Work Warning**
+
+          Story {{story_key}} is currently claimed by another agent/developer.
+          Working on a claimed story may cause merge conflicts.
+
+          **Options:**
+          1. Wait for the other developer to release the claim
+          2. Coordinate with the other developer
+          3. Continue anyway (risk of conflicts)
+        </output>
+        <ask>Continue despite active claim? [y/n] (default: n)</ask>
+
+        <check if="user chooses 'n' or 'no'">
+          <action>HALT - Wait for story claim to be released</action>
+        </check>
+      </check>
+    </check>
+  </step>
+
   <step n="4" goal="Mark story in-progress" tag="sprint-status">
     <check if="{{sprint_status}} file exists">
       <action>Load the FULL file: {{sprint_status}}</action>
@@ -404,6 +448,13 @@
     <check if="{sprint_status} file exists">
       <action>Suggest checking {sprint_status} to see project progress</action>
     </check>
+
+    <!-- BEADS INTEGRATION: Release story claim -->
+    <check if="bd command is available AND story claim was created in step 3.5">
+      <action>Run `bd-release {{claim_id}}` to release the story claim</action>
+      <output>✓ Beads claim released for {{story_key}}</output>
+    </check>
+
     <action>Remain flexible - allow user to choose their own path or ask for other assistance</action>
   </step>
 

@@ -23,7 +23,27 @@ async function loadModuleInjectionConfig(handler, moduleName) {
   };
 }
 
-function shouldApplyInjection(injection, subagentChoices) {
+/**
+ * Determines if an injection should be applied based on subagent choices and feature flags.
+ *
+ * @param {Object} injection - The injection configuration from injections.yaml
+ * @param {Object} subagentChoices - Subagent selection choices (install: 'all'|'selective'|'none')
+ * @param {Object} featureFlags - Optional feature flags (e.g., { 'beads-enabled': true })
+ * @returns {boolean} True if the injection should be applied
+ *
+ * Feature flags take precedence over subagent choices. If injection.requires matches
+ * a feature flag key, the flag's value determines whether to apply the injection.
+ */
+function shouldApplyInjection(injection, subagentChoices, featureFlags = {}) {
+  // Check for feature flag requirements first (e.g., 'beads-enabled')
+  if (injection.requires && featureFlags && typeof featureFlags === 'object') {
+    // Check if requires matches a feature flag key
+    if (injection.requires in featureFlags) {
+      return featureFlags[injection.requires] === true;
+    }
+  }
+
+  // Fall back to subagent-based logic
   if (!subagentChoices || subagentChoices.install === 'none') {
     return false;
   }
@@ -51,6 +71,16 @@ function shouldApplyInjection(injection, subagentChoices) {
   }
 
   return false;
+}
+
+/**
+ * Loads the beads sub-module injection configuration.
+ *
+ * @param {string} moduleName - The module name (e.g., 'bmm')
+ * @returns {Promise<Object|null>} The beads injection config or null if not found
+ */
+async function loadBeadsInjectionConfig(moduleName) {
+  return loadModuleInjectionConfig('beads', moduleName);
 }
 
 function filterAgentInstructions(content, selectedFiles) {
@@ -127,6 +157,7 @@ async function resolveSubagentFiles(handlerBaseDir, subagentConfig, subagentChoi
 
 module.exports = {
   loadModuleInjectionConfig,
+  loadBeadsInjectionConfig,
   shouldApplyInjection,
   filterAgentInstructions,
   resolveSubagentFiles,

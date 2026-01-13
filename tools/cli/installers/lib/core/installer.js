@@ -235,6 +235,118 @@ class Installer {
   }
 
   /**
+   * Process Beads injections for agent files
+   * Appends Beads-specific instructions to compiled agent markdown files
+   * @param {string} projectDir - Project directory
+   * @param {string} bmadDir - BMAD installation directory
+   * @param {Array} modules - List of installed modules
+   */
+  async processBeadsInjections(projectDir, bmadDir, modules) {
+    if (!this.enableBeads) {
+      return;
+    }
+
+    const { loadBeadsInjectionConfig, shouldApplyInjection } = require('../ide/shared/module-injections');
+    const yaml = require('yaml');
+
+    // Build feature flags for injection evaluation
+    const featureFlags = {
+      'beads-enabled': this.enableBeads,
+    };
+
+    let injectedCount = 0;
+
+    // Process beads injections for each module
+    for (const moduleName of modules) {
+      const configData = await loadBeadsInjectionConfig(moduleName);
+
+      if (!configData) {
+        continue;
+      }
+
+      const { config } = configData;
+
+      if (!config.injections || !Array.isArray(config.injections)) {
+        continue;
+      }
+
+      for (const injection of config.injections) {
+        // Check if injection should be applied based on feature flags
+        if (!shouldApplyInjection(injection, null, featureFlags)) {
+          continue;
+        }
+
+        // Resolve target file path
+        const targetPath = path.join(projectDir, injection.file);
+
+        if (!(await fs.pathExists(targetPath))) {
+          // Target file doesn't exist yet, skip
+          continue;
+        }
+
+        try {
+          let content = await fs.readFile(targetPath, 'utf8');
+
+          // Check if beads content is already injected (idempotent)
+          if (content.includes('<!-- BEADS INTEGRATION -->')) {
+            continue;
+          }
+
+          // Append beads content to the end of the file
+          const beadsContent = injection.content;
+          content = content.trimEnd() + '\n\n' + beadsContent;
+
+          await fs.writeFile(targetPath, content, 'utf8');
+          injectedCount++;
+
+          if (process.env.BMAD_VERBOSE_INSTALL === 'true') {
+            console.log(chalk.dim(`  Beads: Injected into ${injection.file}`));
+          }
+        } catch (error) {
+          console.warn(chalk.yellow(`  Warning: Failed to inject beads into ${injection.file}: ${error.message}`));
+        }
+      }
+    }
+
+    if (injectedCount > 0) {
+      console.log(chalk.green(`  ✓ Beads integration added to ${injectedCount} agent(s)`));
+    }
+  }
+
+  /**
+   * Run Beads setup script if enabled and CLI is available
+   * @param {string} projectDir - Project directory
+   */
+  async runBeadsSetup(projectDir) {
+    if (!this.enableBeads || !this.beadsCliInstalled) {
+      return;
+    }
+
+    const { getSourcePath } = require('../../../lib/project-root');
+    const beadsInstallScript = getSourcePath('modules', 'bmm', 'sub-modules', 'beads', 'install.sh');
+
+    if (!(await fs.pathExists(beadsInstallScript))) {
+      return;
+    }
+
+    try {
+      const { execSync } = require('node:child_process');
+
+      // Run the beads install script
+      console.log(chalk.dim('  Running Beads setup...'));
+      execSync(`bash "${beadsInstallScript}" "${projectDir}"`, {
+        stdio: 'inherit',
+        cwd: projectDir,
+      });
+
+      console.log(chalk.green('  ✓ Beads setup complete'));
+    } catch (error) {
+      console.warn(chalk.yellow(`  Warning: Beads setup encountered an issue: ${error.message}`));
+      console.log(chalk.dim('  You can run the setup manually later: bash ./_bmad/bmm/sub-modules/beads/install.sh'));
+    }
+  }
+
+  /**
    * Collect Tool/IDE configurations after module configuration
    * @param {string} projectDir - Project directory
    * @param {Array} selectedModules - Selected modules from configuration
@@ -511,6 +623,10 @@ class Installer {
 
     // Store AgentVibes configuration for injection point processing
     this.enableAgentVibes = config.enableAgentVibes || false;
+
+    // Store Beads configuration for agent injection processing
+    this.enableBeads = config.enableBeads || false;
+    this.beadsCliInstalled = config.beadsCliInstalled || false;
 
     // Set bmad folder name on module manager and IDE manager for placeholder replacement
     this.moduleManager.setBmadFolderName(BMAD_FOLDER_NAME);
@@ -1149,6 +1265,18 @@ class Installer {
       }
 
       spinner.succeed('Module-specific installers completed');
+
+      // Process Beads injections if enabled
+      if (this.enableBeads) {
+        spinner.start('Processing Beads integration...');
+        await this.processBeadsInjections(projectDir, bmadDir, allModules);
+
+        // Run Beads setup script if CLI is available
+        if (this.beadsCliInstalled) {
+          await this.runBeadsSetup(projectDir);
+        }
+        spinner.succeed('Beads integration processed');
+      }
 
       // Note: Manifest files are already created by ManifestGenerator above
       // No need to create legacy manifest.csv anymore
