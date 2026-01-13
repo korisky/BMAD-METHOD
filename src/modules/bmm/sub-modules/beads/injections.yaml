@@ -1,0 +1,91 @@
+# Beads Integration Injections
+# These get injected into BMAD agent files during installation
+
+injections:
+  # Inject into ALL agents (bmad-master, pm, architect, sm, dev)
+  - file: "_bmad/bmm/agents/dev.md"
+    point: "beads-critical-actions"
+    requires: "beads-enabled"
+    content: |
+      <!-- BEADS INTEGRATION -->
+      ## Beads Runtime Coordination
+
+      **Session Start:**
+      - Run `bd-status` to see ready work and active blockers
+      - Run `bd-claim "{story-key}"` before starting any story work
+
+      **During Work:**
+      - Runtime decisions (outside workflow): `bd-decision "{title}"`
+      - External blockers: `bd-blocker "{title}"`
+      - HALT conditions: `bd-halt "{reason}"` immediately
+
+      **Session End:**
+      - Release claim: `bd-release {claim-id}`
+      - Git hooks auto-sync Beads on commit
+      - Push before saying done
+      <!-- END BEADS INTEGRATION -->
+
+  - file: "_bmad/bmm/agents/sm.md"
+    point: "beads-critical-actions"
+    requires: "beads-enabled"
+    content: |
+      <!-- BEADS INTEGRATION -->
+      ## Beads Runtime Coordination
+
+      **Session Start:**
+      - Run `bd-status` to see ready work and active blockers
+
+      **Sprint Management:**
+      - Cross-story dependencies: `bd-blocker "Dep: Story {B} needs {A}"`
+      - Sprint deferrals: `bd-decision "Defer: {story} to next sprint"`
+      - Retrospective action items: `bd create --type task --title "Action: {item}"`
+
+      **Session End:**
+      - Git hooks auto-sync Beads on commit
+      - Push before saying done
+      <!-- END BEADS INTEGRATION -->
+
+  - file: "_bmad/bmm/agents/pm.md"
+    point: "beads-critical-actions"
+    requires: "beads-enabled"
+    content: |
+      <!-- BEADS INTEGRATION -->
+      ## Beads Runtime Coordination
+
+      **Important:**
+      - ADRs go in architecture.md (BMAD) - NOT in Beads
+      - Phase progress tracked by workflow-status.yaml - NOT Beads
+
+      **Runtime Decisions (AFTER formal workflows):**
+      - Scope changes: `bd-decision "Scope: {change}"`
+      - Priority changes: `bd-decision "Priority: {change}"`
+
+      **Session End:**
+      - Push before saying done
+      <!-- END BEADS INTEGRATION -->
+
+  - file: "_bmad/bmm/agents/architect.md"
+    point: "beads-critical-actions"
+    requires: "beads-enabled"
+    content: |
+      <!-- BEADS INTEGRATION -->
+      ## Beads Runtime Coordination
+
+      **Important:**
+      - ADRs captured in architecture.md during workflow - NOT in Beads
+
+      **Post-Architecture Changes:**
+      - Technology pivots: `bd-decision "Tech: {change}"`
+      - Pattern changes: `bd-decision "Pattern: {change}"`
+
+      **Session End:**
+      - Push before saying done
+      <!-- END BEADS INTEGRATION -->
+
+# Shell aliases to install
+aliases:
+  source_file: "beads-aliases.sh"
+  target: "~/.bmad/beads-aliases.sh"
+  install_instruction: |
+    Add to your ~/.bashrc or ~/.zshrc:
+    source ~/.bmad/beads-aliases.sh

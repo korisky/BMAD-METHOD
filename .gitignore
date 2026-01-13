@@ -43,6 +43,9 @@ CLAUDE.local.md
 .serena/
 .claude/settings.local.json
 
+# Beads (per-project, created by bd init)
+.beads/
+
 # Project-specific
 _bmad-core
 _bmad-creator-tools
@@ -56,10 +59,12 @@ tools/template-test-generator/test-scenarios/
 .bundler-temp/
 
 # Generated web bundles (built by CI, not committed)
-src/modules/bmm/sub-modules/
+src/modules/bmm/sub-modules/*/
 src/modules/bmb/sub-modules/
 src/modules/cis/sub-modules/
 src/modules/bmgd/sub-modules/
+# Exception: beads integration sub-module (not generated, part of repo)
+!src/modules/bmm/sub-modules/beads/
 shared-modules
 z*/
 

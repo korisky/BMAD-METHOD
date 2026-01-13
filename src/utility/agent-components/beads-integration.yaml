@@ -1,4 +1,4 @@
-# Beads Integration Component for BMAD Agents (v4)
+# Beads Integration Component for BMAD Agents (v5 - Shell Aliases)
 # Inject these into agent critical_actions
 
 # Principle: BMAD owns formal outputs. Beads owns runtime state and coordination.
@@ -7,47 +7,48 @@ injectable_critical_actions:
   # Add to ALL agents
   all_agents:
     # Session start
-    - "Check HALT conditions first: `bd list --type blocker --priority 0`"
-    - "Check blockers before picking story: `bd list --type blocker --status open`"
-    - "Check work claims: `bd list --type task --status in_progress | grep Working:`"
+    - "Check status first: `bd-status` (shows ready work + blockers)"
+    - "Check HALTs: `bd-halts` (priority 0 issues)"
+    - "See who's working: `bd-who`"
 
     # During work
-    - "Claim story before starting: `bd create --title 'Working: Story {key}' --type task --priority 1`"
-    - "Runtime decisions (outside workflows): `bd create --type decision --priority 2`"
-    - "External blockers: `bd create --type blocker --priority 1`"
-    - "HALT conditions: `bd create --type blocker --priority 0` immediately"
+    - "Claim story before starting: `bd-claim \"{story-key}\"`"
+    - "Runtime decisions (outside workflows): `bd-decision \"{title}\"`"
+    - "External blockers: `bd-blocker \"{title}\"`"
+    - "HALT conditions: `bd-halt \"{reason}\"` immediately"
+    - "Action items: `bd-action \"{title}\"`"
 
     # Session end
-    - "Close work claim when done: `bd close <id>`"
-    - "Push before saying done: `bd sync && git push`"
-    - "Include DOC: path in all Beads notes"
+    - "Release claim when done: `bd-release <id>`"
+    - "Git hooks auto-sync Beads on commit"
+    - "Push before saying done"
 
   # Role-specific - PM
   pm:
     - "ADRs go in architecture.md (BMAD) - NOT in Beads"
-    - "Scope changes AFTER PRD done → `bd create --type decision`"
+    - "Scope changes AFTER PRD done → `bd-decision \"Scope: {change}\"`"
     - "Phase progress in workflow-status.yaml - NOT Beads"
 
   # Role-specific - Architect
   architect:
     - "ADRs captured during architecture workflow - NOT in Beads"
-    - "Post-architecture technology pivots → `bd create --type decision`"
+    - "Post-architecture technology pivots → `bd-decision \"Tech: {change}\"`"
 
   # Role-specific - SM
   sm:
     - "Story status in sprint-status.yaml - NOT Beads"
-    - "Cross-story dependencies → `bd create --type blocker`"
-    - "Sprint deferrals → `bd create --type decision`"
-    - "Retrospective action items → `bd create --type task` for each"
+    - "Cross-story dependencies → `bd-blocker \"Dep: Story {B} needs {A}\"`"
+    - "Sprint deferrals → `bd-decision \"Defer: {story}\"`"
+    - "Retrospective action items → `bd-action \"{item}\"`"
 
   # Role-specific - DEV
   dev:
-    - "ALWAYS claim story before starting work"
+    - "ALWAYS claim story before starting: `bd-claim \"{story-key}\"`"
     - "Task checkboxes in story file - NOT Beads"
-    - "Mid-implementation discoveries → `bd create --type decision`"
-    - "On HALT: `bd create --type blocker --priority 0` immediately"
+    - "Mid-implementation discoveries → `bd-decision \"{discovery}\"`"
+    - "On HALT: `bd-halt \"{reason}\"` immediately"
 
-# Priority scale
+# Priority scale (numbers only, not P0/P1/etc)
 priority_guide:
   0: "HALT conditions, critical blockers"
   1: "Work claims, urgent blockers"
@@ -73,16 +74,21 @@ do_track:
   - "Cross-story dependencies"
   - "Persistent action items"
 
-# Trigger phrases
+# Trigger phrases → shell aliases
 trigger_phrases:
-  "any HALTs?": "bd list --type blocker --priority 0"
-  "what's blocked?": "bd list --type blocker --status open"
-  "what decisions?": "bd list --type decision --status open"
-  "who's working?": "bd list --type task --status in_progress"
-  "action items?": "bd list --type task --status open"
-  "claim story X": "bd create --title 'Working: Story X' --type task --priority 1"
-  "HALT": "bd create --type blocker --priority 0"
-  "land the plane": "Session close protocol"
+  "any HALTs?": "bd-halts"
+  "what's blocked?": "bd-blockers"
+  "what decisions?": "bd-decisions"
+  "who's working?": "bd-who"
+  "status": "bd-status"
+  "what's ready?": "bd-next"
+  "claim story X": "bd-claim \"X\""
+  "release claim": "bd-release <id>"
+  "HALT": "bd-halt \"reason\""
+  "that's a decision": "bd-decision \"title\""
+  "that's a blocker": "bd-blocker \"title\""
+  "land the plane": "bd-land"
+  "help": "bd-help"
 
 # Notes format
 notes_format: "WHO: {agent} | WHAT: {item} | WHY: {reason} | DOC: {bmad_doc_path}"
