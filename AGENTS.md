@@ -1,126 +1,139 @@
 # BMAD + Beads Agent Instructions
 
-> **Principle**: BMAD owns formal workflow outputs. Beads owns runtime state.
+> This file provides optional Beads integration for BMAD workflows.
+> **Beads is optional.** BMAD works perfectly without it.
 
 ---
 
-## The Split
+## What is Beads?
 
-```
-BMAD owns:
-├── Documents (PRD, Architecture, Stories)
-├── Story status (sprint-status.yaml)
-├── Phase progress (bmm-workflow-status.yaml)
-└── ADRs (in architecture.md)
+Beads adds runtime coordination and persistent memory to BMAD:
+- **Work claims** - Prevent concurrent story edits
+- **Runtime decisions** - Capture choices made outside workflows
+- **Blockers** - Track external impediments
+- **Context persistence** - Survives `/clear` and session boundaries
 
-Beads owns:
-├── Runtime decisions (outside workflows)
-├── Blockers (external impediments)
-└── Cross-story dependencies
-```
+**Without Beads**: BMAD works normally using sprint-status.yaml and workflow-status.yaml.
 
-**Key**: Don't duplicate. BMAD workflows capture their outputs. Beads captures what happens BETWEEN workflows.
+**With Beads**: You get additional coordination and memory features.
 
 ---
 
-## When to Use Beads
+## Setup (Optional)
 
-### Runtime Decisions (made OUTSIDE formal workflows)
-
-| Use Beads? | Scenario |
-|------------|----------|
-| **No** | Architect picks GraphQL (captured in ADR) |
-| **Yes** | DEV discovers mid-story: "need to refactor auth first" |
-| **Yes** | PM says during implementation: "drop feature X" |
-| **Yes** | SM decides: "defer this story to next sprint" |
+If you want Beads integration:
 
 ```bash
-bd create --title "Runtime: {summary}" --type decision
-bd update <id> --notes "WHO: {agent} | WHAT: {choice} | WHY: {reason} | DOC: {affected_doc}"
+# 1. Install Beads CLI
+# See: https://github.com/steveyegge/beads
+
+# 2. Initialize in your project
+bd init
+bd hooks install
+
+# 3. Load helper aliases (optional but recommended)
+source ./src/modules/bmm/sub-modules/beads/beads-aliases.sh
 ```
 
-### Blockers (external impediments)
-
-```bash
-bd create --title "Blocked: {issue}" --type blocker
-bd update <id> --notes "AFFECTS: {story} | OWNER: {who} | ETA: {when}"
-```
-
-### Cross-Story Dependencies
-
-```bash
-bd create --title "Dep: {story-B} needs {story-A}" --type blocker
-bd update <id> --notes "BLOCKED: {B} | NEEDS: {A} done first | REASON: {why}"
-```
+If Beads is not installed, simply ignore the `bd-*` commands below.
 
 ---
 
-## When NOT to Use Beads
+## The Split (When Using Beads)
 
-| Don't Do | Why | BMAD Handles It |
-|----------|-----|-----------------|
-| "Phase: PRD Complete" epic | Duplicate | bmm-workflow-status.yaml |
-| Decision for each ADR | Duplicate | architecture.md |
-| Issues for stories | Duplicate | sprint-status.yaml |
-| Issues for tasks | Duplicate | Story file checkboxes |
+```
+BMAD (always):                      Beads (if installed):
+├── Documents                       ├── Work claims (bd-claim)
+├── sprint-status.yaml              ├── Runtime decisions (bd-decision)
+├── workflow-status.yaml            ├── Blockers (bd-blocker)
+├── ADRs (architecture.md)          ├── HALTs (bd-halt)
+└── Task checkboxes                 └── Action items (bd-action)
+```
+
+**Rule**: Don't duplicate. BMAD handles formal outputs. Beads handles runtime state.
 
 ---
 
-## Session Start
+## Quick Reference (If Beads Installed)
 
+### Session Start
 ```bash
-# 1. Beads auto-primes (hook)
+bd-status              # See ready work + blockers
+bd-claim "story-key"   # Claim before starting
+```
 
-# 2. Check runtime state
-bd list --type decision --status open
-bd list --type blocker --status open
+### During Work
+```bash
+bd-decision "title"    # Runtime decision (outside workflow)
+bd-blocker "title"     # External blocker
+bd-halt "reason"       # Critical failure (P0)
+```
 
-# 3. Find work from BMAD
-# Read bmm-workflow-status.yaml (phase progress)
-# Read sprint-status.yaml (story status)
-# Load the active story file
+### Session End
+```bash
+bd-release <id>        # Release claim
+git commit && push     # Hooks auto-sync Beads
 ```
 
 ---
 
-## Session End ("Land the Plane")
+## Key Commands
 
+| Command | What It Does |
+|---------|--------------|
+| `bd-status` | Ready work + blockers |
+| `bd-claim X` | Claim a story |
+| `bd-release X` | Release a claim |
+| `bd-decision X` | Create decision |
+| `bd-blocker X` | Create blocker |
+| `bd-halt X` | Create HALT (P0) |
+| `bd-help` | Show all commands |
+
+---
+
+## When to Use Beads (If Installed)
+
+### Use Beads For:
+- **Work claims** - Before starting a story, claim it
+- **Runtime decisions** - Choices made OUTSIDE formal workflows
+- **External blockers** - Waiting on APIs, approvals, etc.
+- **HALTs** - Critical failures that must persist
+- **Cross-story dependencies** - Story B needs Story A first
+
+### Don't Use Beads For (Use BMAD Instead):
+- Story status → `sprint-status.yaml`
+- Phase progress → `workflow-status.yaml`
+- ADRs → `architecture.md`
+- Task checkboxes → Story files
+
+---
+
+## If Beads is NOT Installed
+
+If you see errors like `bd: command not found`:
+1. You can ignore Beads commands and use BMAD normally
+2. Or install Beads: https://github.com/steveyegge/beads
+
+BMAD's core functionality works perfectly without Beads.
+
+---
+
+## Landing the Plane (Session End)
+
+**With Beads:**
 ```bash
-# 1. BMAD workflows auto-update their status files
-
-# 2. Beads sync
-bd sync
-
-# 3. Commit and push (MANDATORY)
-git add -A
-git commit -m "{message}"
+bd-release <claim-id>   # Release work claim
+bd sync                 # Sync Beads (or let hooks do it)
+git add -A && git commit -m "message"
 git push
+```
 
-# 4. Verify
-git status    # Must show "up to date"
+**Without Beads:**
+```bash
+git add -A && git commit -m "message"
+git push
 ```
 
 ---
 
-## Trigger Phrases
-
-| Say | Action |
-|-----|--------|
-| "what runtime decisions?" | `bd list --type decision` |
-| "what's blocked?" | `bd list --type blocker` |
-| "file that as runtime decision" | `bd create --type decision` |
-| "that's a blocker" | `bd create --type blocker` |
-| "land the plane" | Session close |
-
----
-
-## 4 Rules
-
-1. **Formal decisions → ADRs** (BMAD architecture.md)
-2. **Runtime decisions → Beads** (outside workflow changes)
-3. **Blockers → Beads** (external impediments)
-4. **Push before done** (work not saved until pushed)
-
----
-
-`bd help` | `bd quickstart` | `bd doctor`
+`bd-help` | `bd-status` | BMAD workflows work without Beads

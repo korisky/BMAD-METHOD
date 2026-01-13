@@ -1,234 +1,278 @@
-# BMAD + Beads Integration (v3 - Corrected)
+# BMAD + Beads Integration (v5 - Efficient)
 
-> **Principle**: No overlap. No sync. Each system owns distinct concerns.
+> BMAD owns formal outputs. Beads owns runtime state. Minimal overhead.
 
 ---
 
-## The Design
+## Design Principles
+
+1. **Use native Beads commands** - `bd ready`, `bd q` instead of verbose alternatives
+2. **Shell aliases** - One-word commands for common operations
+3. **Automatic hooks** - `bd hooks install` for seamless git sync
+4. **No duplication** - Clear split between systems
+
+---
+
+## The Split
 
 ```
-BMAD owns:
-├── Documents (PRD, Architecture, Stories)
-├── Story status (sprint-status.yaml)
-├── Phase progress (bmm-workflow-status.yaml)
-└── ADRs (in architecture.md)
-
-Beads owns:
-├── Runtime decisions (made outside formal workflows)
-├── Blockers (external impediments)
-└── Cross-story dependencies (A must complete before B)
+BMAD (Formal Outputs):              Beads (Runtime & Coordination):
+├── Documents                       ├── Work claims
+├── sprint-status.yaml              ├── Runtime decisions
+├── workflow-status.yaml            ├── Blockers
+├── ADRs (architecture.md)          ├── HALT conditions (P0)
+├── Code review findings            ├── Cross-story deps
+└── Retrospective docs              └── Action items
 ```
 
-**Key insight**: BMAD already tracks phases (workflow-status) and architectural decisions (ADRs). Beads should NOT duplicate these. Beads captures what happens OUTSIDE of BMAD workflows.
-
 ---
 
-## What Each System Owns (No Overlap)
-
-### BMAD Owns - Don't Put in Beads
-
-| Concern | Location | Tracked By |
-|---------|----------|------------|
-| Requirements | `prd.md` | PM workflow |
-| Architecture | `architecture.md` | Architect workflow |
-| **ADRs** | `architecture.md` | step-04-decisions |
-| Work breakdown | `epics.md` | PM workflow |
-| Story status | `sprint-status.yaml` | SM + DEV workflows |
-| **Phase progress** | `bmm-workflow-status.yaml` | workflow-status service |
-| Task progress | Story file `[x]` marks | DEV workflow |
-
-### Beads Owns - Don't Put in BMAD
-
-| Concern | Issue Type | When to Create |
-|---------|------------|----------------|
-| **Runtime decisions** | `decision` | Choices made OUTSIDE formal workflows |
-| **Blockers** | `blocker` | External impediments stopping work |
-| **Cross-story deps** | `bd dep add` | When story A needs story B first |
-
----
-
-## What IS a "Runtime Decision"?
-
-**Create a Beads decision when** the decision is made OUTSIDE a BMAD workflow:
-
-| Scenario | Beads? | Why |
-|----------|--------|-----|
-| Architect chooses GraphQL over REST | **No** | Captured in ADR during architecture workflow |
-| DEV discovers auth needs refactoring mid-story | **Yes** | Not in any BMAD artifact, affects other work |
-| PM reduces scope during implementation | **Yes** | Scope change after PRD was finalized |
-| SM decides to defer story to next sprint | **Yes** | Runtime priority change |
-| Team agrees to skip a story | **Yes** | Runtime scope change |
-
-**The rule**: If it's captured in a BMAD workflow output (PRD, Architecture, Stories, sprint-status), don't duplicate in Beads. If it happens between workflows or changes something already decided, capture in Beads.
-
----
-
-## What IS a "Blocker"?
-
-External impediments that stop work - things BMAD workflows don't track:
+## Shell Aliases (Add to ~/.bashrc or ~/.zshrc)
 
 ```bash
-bd create --title "Blocked: Waiting on API credentials" --type blocker
-bd update <id> --notes "AFFECTS: Story 1-2 | OWNER: DevOps | ETA: unknown"
-```
+# Quick operations
+alias bd-next='bd ready --pretty --limit 10'
+alias bd-halt='bd create --type blocker --priority 0 --title'
+alias bd-decision='bd create --type decision --priority 2 --title'
+alias bd-blocker='bd create --type blocker --priority 1 --title'
 
-Examples:
-- Waiting on external service/API
-- Need approval from stakeholder
-- Dependent system is down
-- Missing test data
-- License/legal review pending
+# Work claiming (one command)
+bd-claim() {
+  local story="$1"
+  local id=$(bd q "Working: $story" --type task --priority 1 --silent)
+  bd update $id --status in_progress --notes "AGENT: $(whoami) | STARTED: $(date -Iseconds)"
+  echo "Claimed: $id"
+}
 
----
+# Release claim
+bd-release() {
+  local id="$1"
+  bd close $id --reason "Done"
+}
 
-## What IS a "Cross-Story Dependency"?
-
-When one story must complete before another can start (BMAD doesn't track this):
-
-```bash
-# Story 1-3 can't start until Story 1-2 is done
-bd create --title "Dep: Story 1-3 needs API from 1-2" --type blocker
-bd update <id> --notes "BLOCKED: 1-3 | NEEDS: 1-2 API endpoint | DOC: stories/1-2-api.md"
-```
-
-Or if using Beads dependency graph:
-```bash
-bd dep add <story-1-3-id> <story-1-2-id>
+# Check what's happening
+alias bd-status='bd ready --pretty && echo "---" && bd list --type blocker --status open'
 ```
 
 ---
 
-## Session Protocols
-
-### Session Start
+## Session Start (Simplified)
 
 ```bash
 # 1. Beads auto-primes (hook)
 
-# 2. Check for runtime decisions and blockers
-bd list --type decision --status open    # Any pending decisions?
-bd list --type blocker --status open     # Any blockers?
+# 2. See everything at once
+bd-status
+# Shows: ready work + active blockers
 
-# 3. Find work from BMAD (not Beads!)
-# Read sprint-status.yaml for story status
-# Read bmm-workflow-status.yaml for phase progress
-# Load the appropriate story file
+# 3. If picking a story, claim it
+bd-claim "1-2-user-auth"
+
+# 4. Read BMAD files as needed
+# sprint-status.yaml, story file, etc.
 ```
 
-### During Work
+**One command (`bd-status`) replaces 4 manual checks.**
 
+---
+
+## Work Claiming (Efficient)
+
+**Before:**
 ```bash
-# Follow BMAD workflows normally
-# BMAD workflows capture their own outputs (PRD, ADRs, Stories)
-
-# ONLY use Beads when something happens OUTSIDE the workflow:
-bd create --type decision  # Runtime decision
-bd create --type blocker   # External impediment
+bd create --title "Working: Story 1-2" --type task --priority 1
+bd update <id> --status in_progress
+bd update <id> --notes "AGENT: claude | STARTED: 2025-01-13"
 ```
 
-### Session End ("Land the Plane")
+**After:**
+```bash
+bd-claim "Story 1-2"  # One command, done
+```
+
+---
+
+## Recording Events
+
+### HALT Condition
+```bash
+bd-halt "3 consecutive test failures in Story 1-2"
+bd update <id> --notes "STORY: 1-2 | WORKFLOW: dev-story | LAST_ERROR: TypeError"
+```
+
+### Runtime Decision
+```bash
+bd-decision "Use Redis for session storage"
+bd update <id> --notes "WHO: architect | WHY: Scale requirements | DOC: architecture.md"
+```
+
+### Blocker
+```bash
+bd-blocker "Waiting on API credentials from DevOps"
+bd update <id> --notes "AFFECTS: Story 1-3 | OWNER: devops | ETA: unknown"
+```
+
+---
+
+## Session End (With Hooks)
+
+If `bd hooks install` was run, git operations auto-sync Beads.
 
 ```bash
-# 1. BMAD status updates (if any)
-# - sprint-status.yaml for story changes
-# - bmm-workflow-status.yaml updated by workflows automatically
+# 1. Release claim
+bd-release <claim-id>
 
-# 2. Beads sync
-bd sync
-
-# 3. Commit and push
+# 2. Commit (hooks auto-sync Beads)
 git add -A
 git commit -m "{message}"
+
+# 3. Push
 git push
 
 # 4. Verify
-git status    # Must show "up to date"
+git status
 ```
 
----
-
-## Human Trigger Phrases
-
-| Say | Action |
-|-----|--------|
-| "what runtime decisions?" | `bd list --type decision` |
-| "what's blocked?" | `bd list --type blocker` |
-| "file that as a runtime decision" | `bd create --type decision` |
-| "that's a blocker" | `bd create --type blocker` |
-| "land the plane" | Session close protocol |
+**No manual `bd sync` needed** - hooks handle it.
 
 ---
 
-## What NOT to Do (Avoid Duplication)
+## Priority Scale
 
-| Don't Do This | Why | Do This Instead |
-|---------------|-----|-----------------|
-| Create "Phase: PRD Complete" epic | BMAD workflow-status.yaml tracks this | Just run the workflow |
-| Create decision for every ADR | ADRs live in architecture.md | Only capture runtime decisions |
-| Create issues for stories | sprint-status.yaml tracks stories | Use BMAD |
-| Create issues for tasks | Story file checkboxes track tasks | Use BMAD |
+| Priority | Use For | Alias |
+|----------|---------|-------|
+| 0 | HALT, critical | `bd-halt` |
+| 1 | Claims, urgent blockers | `bd-blocker` |
+| 2 | Decisions, actions | `bd-decision` |
+| 3-4 | Low/backlog | manual |
 
 ---
 
-## Why This is 1+1 > 2
+## What to Track Where
 
-### BMAD Provides
-- Rich document generation (PRD, Architecture, Stories)
-- Guided workflows with quality gates
-- Phase tracking (workflow-status.yaml)
+### BMAD Only
 - Story status (sprint-status.yaml)
+- Phase progress (workflow-status.yaml)
 - ADRs (architecture.md)
+- Task checkboxes (story files)
+- Review findings (story files)
 
-### Beads Adds (Things BMAD Can't Do)
-- **Runtime decision memory**: Decisions made outside workflows, survives /clear
-- **Blocker tracking**: External impediments
-- **Cross-story dependencies**: Explicit "A needs B first"
-
-### Combined Value
-- Formal decisions → BMAD ADRs (architecture.md)
-- Runtime decisions → Beads (discoverable, persistent)
-- Phase progress → BMAD workflow-status (automatic)
-- Blockers → Beads (visible, actionable)
+### Beads Only
+- Work claims (coordination)
+- Runtime decisions (outside workflows)
+- Blockers (external)
+- HALTs (priority 0)
+- Cross-story deps
+- Action items
 
 ---
 
-## Context Recovery (After /clear)
+## Installation Integration
+
+### Option 1: Sub-module (Recommended)
+
+Add to BMAD installer as optional sub-module:
+
+```
+src/modules/bmm/sub-modules/beads/
+├── config.yaml
+├── injections.yaml
+├── install.sh          # Runs: bd init && bd hooks install
+└── aliases.sh          # Shell aliases to source
+```
+
+**User flow:**
+1. Run `npx bmad-method install`
+2. Select "Enable Beads integration"
+3. Installer runs `bd init` and `bd hooks install`
+4. Aliases added to shell config
+5. Injections add critical_actions to agents
+
+### Option 2: Manual Setup
 
 ```bash
-# 1. Beads context auto-loads
+# In project root
+bd init
+bd hooks install
 
-# 2. Check runtime state
-bd list --type decision     # What was decided outside workflows?
-bd list --type blocker      # What's blocked?
+# Add to shell
+source /path/to/bmad/beads/aliases.sh
 
-# 3. Check BMAD state
-# Read bmm-workflow-status.yaml (what phase are we in?)
-# Read sprint-status.yaml (what story is active?)
-# Read relevant story file
-
-# 4. DOC: pointers in Beads notes help find BMAD docs
-bd show <id>   # Notes field has DOC: path
+# Or add aliases manually to ~/.bashrc
 ```
 
 ---
 
-## Quick Reference
+## Agent Critical Actions (Injected)
 
-```
-Use BMAD for:
-✓ Creating/editing documents (PRD, Architecture, Stories)
-✓ Tracking story status (sprint-status.yaml)
-✓ Tracking phase progress (workflow-status.yaml)
-✓ Recording ADRs (architecture.md)
-✓ Task checkboxes in story files
+Add to all agents via `injections.yaml`:
 
-Use Beads for:
-✓ Runtime decisions (made outside workflows)
-✓ Blockers (external impediments)
-✓ Cross-story dependencies
-✓ Context that must survive /clear
+```yaml
+# Session start
+- "Run `bd-status` to see ready work and blockers"
+- "Run `bd-claim {story}` before starting work"
+
+# During work
+- "Runtime decisions: `bd-decision {title}`"
+- "Blockers: `bd-blocker {title}`"
+- "HALT conditions: `bd-halt {title}` immediately"
+
+# Session end
+- "Release claim: `bd-release {id}`"
+- "Git commit triggers auto-sync via hooks"
+- "Push before saying done"
 ```
 
 ---
 
-`bd help` | `bd quickstart` | `bd doctor`
+## Trigger Phrases
+
+| Say | Alias/Command |
+|-----|---------------|
+| "what's ready?" | `bd-next` |
+| "status" | `bd-status` |
+| "claim story X" | `bd-claim "X"` |
+| "release claim" | `bd-release <id>` |
+| "HALT" | `bd-halt "reason"` |
+| "that's a decision" | `bd-decision "title"` |
+| "that's a blocker" | `bd-blocker "title"` |
+
+---
+
+## Quick Reference Card
+
+```
+SESSION START:
+  bd-status              # See ready work + blockers
+  bd-claim "story"       # Claim before starting
+
+DURING WORK:
+  bd-decision "..."      # Runtime decision
+  bd-blocker "..."       # External blocker
+  bd-halt "..."          # Critical failure (P0)
+
+SESSION END:
+  bd-release <id>        # Release claim
+  git commit && push     # Hooks sync Beads
+
+QUERIES:
+  bd-next                # Ready work
+  bd ready --pretty      # Full ready view
+  bd list --type X       # Filter by type
+```
+
+---
+
+## Why This is More Efficient
+
+| Before (v4) | After (v5) | Improvement |
+|-------------|------------|-------------|
+| 4 manual `bd list` checks | `bd-status` (1 command) | 75% fewer commands |
+| 3 commands to claim | `bd-claim` (1 alias) | 66% fewer commands |
+| Manual `bd sync` | Git hooks auto-sync | Zero manual sync |
+| Long command strings | Short aliases | Faster typing |
+| Check then cross-reference | `bd ready` does it | Built-in intelligence |
+
+---
+
+`bd help` | `bd-status` | `bd-next`

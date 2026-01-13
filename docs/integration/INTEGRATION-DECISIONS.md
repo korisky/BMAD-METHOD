@@ -1,151 +1,143 @@
-# Integration Design Decisions (v3)
+# Integration Design Decisions (v5 - Final)
 
-> Why we split BMAD and Beads this way
-
----
-
-## Critical Insight
-
-BMAD already has comprehensive tracking:
-- **Phase progress**: `bmm-workflow-status.yaml`
-- **Architectural decisions**: ADRs in `architecture.md`
-- **Story status**: `sprint-status.yaml`
-- **Task progress**: Story file checkboxes
-
-**Beads should NOT duplicate any of this.**
+> Complete rationale for BMAD + Beads integration
 
 ---
 
-## What Beads Actually Adds
+## Design Evolution
 
-Beads captures what happens OUTSIDE formal BMAD workflows:
-
-| Concern | Why BMAD Can't | Beads Solution |
-|---------|---------------|----------------|
-| Runtime decisions | Workflows only capture planned decisions | `--type decision` for ad-hoc choices |
-| External blockers | No workflow for "waiting on external API" | `--type blocker` |
-| Cross-story deps | sprint-status.yaml is flat (no relationships) | `bd dep add` |
-| Context after /clear | BMAD docs exist but agent loses pointer | DOC: notes point back |
+| Version | Key Change |
+|---------|------------|
+| v1 | Initial split: BMAD docs, Beads tracking |
+| v2 | Removed story-level Beads (use sprint-status) |
+| v3 | Removed phase/ADR duplication |
+| v4 | Added work claiming, HALT tracking |
+| v5 | Shell aliases for efficiency |
 
 ---
 
-## Key Decisions Made
+## Issues Resolved
 
-### Decision 1: NO Phase Tracking in Beads
+| Issue | Solution | Efficiency |
+|-------|----------|------------|
+| Concurrent edits | Work claiming | `bd-claim` (1 cmd) |
+| Blocker visibility | Check first | `bd-status` (1 cmd) |
+| HALT lost on clear | Priority 0 blockers | `bd-halt` (1 cmd) |
+| Verbose commands | Shell aliases | 75% fewer keystrokes |
+| Manual sync | Git hooks | Zero manual sync |
 
-**Old plan**: Create "Phase: PRD Complete" epics in Beads
+---
 
-**Problem**: `bmm-workflow-status.yaml` already tracks this:
-```yaml
-workflow_status:
-  prd: "docs/prd.md"  # Done
-  create-architecture: required  # Not done
-```
+## What Each System Owns
 
-**New plan**: Don't track phases in Beads. Let BMAD handle it.
+### BMAD (Don't Duplicate in Beads)
 
-### Decision 2: NO ADR Duplication
+| Item | Location | Reason |
+|------|----------|--------|
+| Phase progress | workflow-status.yaml | BMAD workflow manages |
+| Story status | sprint-status.yaml | BMAD workflow manages |
+| ADRs | architecture.md | Formal decisions |
+| Task checkboxes | story files | Implementation detail |
+| Review findings | story files | Tied to code |
 
-**Old plan**: Create Beads decision for each ADR
+### Beads (Don't Duplicate in BMAD)
 
-**Problem**: ADRs already captured in `architecture.md` during step-04-decisions.md
+| Item | Type | Priority | Reason |
+|------|------|----------|--------|
+| Work claims | task | 1 | Prevent conflicts |
+| Runtime decisions | decision | 2 | Outside workflows |
+| External blockers | blocker | 1 | BMAD can't track |
+| HALTs | blocker | 0 | Must persist |
+| Action items | task | 2 | Cross-epic visibility |
 
-**New plan**: Only create Beads decisions for RUNTIME decisions (made outside workflows)
+---
 
-### Decision 3: "Runtime Decision" Definition
+## Efficiency Improvements
 
-A runtime decision is a choice made AFTER a BMAD workflow has completed its output:
-
-| Runtime? | Example |
-|----------|---------|
-| No | Architect chooses database in architecture workflow |
-| **Yes** | DEV discovers mid-implementation: "need different approach" |
-| No | PM defines requirements in PRD workflow |
-| **Yes** | PM says during sprint: "actually, drop that feature" |
-
-### Decision 4: Blockers Are Beads-Only
-
-BMAD has no construct for external impediments. Beads fills this gap:
-- "Waiting on credentials"
-- "Need stakeholder approval"
-- "Dependent service is down"
-
-### Decision 5: Cross-Story Dependencies Are Beads-Only
-
-`sprint-status.yaml` is a flat list - no relationship tracking. Beads adds:
+### Before (v4)
 ```bash
-bd dep add <story-3> <story-2>  # Story 3 blocked until Story 2 done
+# Session start: 4 commands
+bd list --type blocker --priority 0
+bd list --type blocker --status open
+bd list --type task --status in_progress
+# Read sprint-status.yaml
+
+# Claim: 3 commands
+bd create --title "Working: Story X" --type task --priority 1
+bd update <id> --status in_progress
+bd update <id> --notes "..."
 ```
+
+### After (v5)
+```bash
+# Session start: 1 command
+bd-status
+
+# Claim: 1 command
+bd-claim "Story X"
+```
+
+**Result**: 75% fewer commands, same functionality.
 
 ---
 
-## BMAD Installation Integration
+## Shell Aliases
 
-### How Beads Should Hook In
+| Alias | Replaces |
+|-------|----------|
+| `bd-status` | 2 `bd list` commands |
+| `bd-claim X` | 3 `bd` commands |
+| `bd-halt X` | `bd create --type blocker --priority 0 --title X` |
+| `bd-decision X` | `bd create --type decision --priority 2 --title X` |
+| `bd-blocker X` | `bd create --type blocker --priority 1 --title X` |
 
-Based on analysis of BMAD's module system, Beads can integrate as:
+---
 
-**Option A: Sub-module of BMM** (Recommended for quick start)
+## Installation Integration
+
+### Sub-module Structure
+
 ```
 src/modules/bmm/sub-modules/beads/
-├── config.yaml
-├── injections.yaml     # Inject critical_actions into agents
-└── readme.md
-```
-
-**Option B: Standalone Module** (For full integration)
-```
-src/modules/beads/
-├── module.yaml
-├── _module-installer/
-│   └── installer.js    # Init Beads CLI
-└── sub-modules/
-    └── claude-code/
-        └── injections.yaml
+├── config.yaml        # Sub-module metadata
+├── injections.yaml    # Agent critical_actions injection
+├── beads-aliases.sh   # Shell aliases
+├── install.sh         # Setup script
+└── README.md
 ```
 
 ### Installation Flow
 
 1. User runs `npx bmad-method install`
-2. Selects BMM module
-3. Prompted: "Enable Beads for runtime tracking?"
-4. If yes:
-   - Check/install `bd` CLI
-   - Run `bd init` in project
-   - Inject Beads critical_actions into agent files
-   - Set up git hooks for `bd sync`
+2. Selects "Enable Beads integration"
+3. Installer runs `install.sh`:
+   - Checks for `bd` CLI
+   - Runs `bd init`
+   - Runs `bd hooks install`
+   - Installs aliases to `~/.bmad/`
+   - Adds source line to shell RC
+4. Injections add Beads instructions to agents
 
 ---
 
-## The 1+1 > 2 Value
+## Success Criteria
 
-| Alone | Combined |
-|-------|----------|
-| BMAD: Great docs, but runtime changes get lost | Runtime changes captured in Beads |
-| BMAD: No blocker tracking | Blockers visible and actionable |
-| BMAD: Flat story list | Dependencies explicit in Beads |
-| Beads: Good tracking, no doc generation | Rich docs from BMAD |
-
-**The synergy**: BMAD generates formal artifacts. Beads captures the chaos that happens between formal steps.
-
----
-
-## What We Avoided
-
-| Complexity | Status |
-|------------|--------|
-| Story-level Beads issues | Removed - sprint-status.yaml handles this |
-| Phase tracking in Beads | Removed - workflow-status.yaml handles this |
-| ADR duplication | Removed - architecture.md handles this |
-| Status sync scripts | Never needed - systems track different things |
+| Criterion | How Verified |
+|-----------|--------------|
+| No concurrent edits | `bd-claim` before work |
+| Blockers visible | `bd-status` shows all |
+| HALT persists | Priority 0, survives clear |
+| Decisions discoverable | `bd-decisions` lists all |
+| Minimal overhead | 1-2 commands per operation |
+| No manual sync | Git hooks handle it |
 
 ---
 
-## Migration Path
+## Why This Design Works
 
-For projects already using BMAD:
-
-1. Run `bd init` (if not done)
-2. Start capturing runtime decisions and blockers
-3. No need to backfill - BMAD artifacts are already the source of truth
-4. Beads adds incremental value for runtime state
+1. **Clear ownership** - Each system handles distinct concerns
+2. **No duplication** - No sync needed because no overlap
+3. **Efficient commands** - Aliases reduce friction
+4. **Automatic sync** - Git hooks eliminate manual step
+5. **Persistent memory** - Beads survives context clear
+6. **Coordination** - Work claims prevent conflicts

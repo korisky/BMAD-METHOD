@@ -1,61 +1,88 @@
-# Beads Integration Component for BMAD Agents (v3)
+# Beads Integration Component for BMAD Agents (v4)
 # Inject these into agent critical_actions
 
-# Principle: BMAD owns formal workflow outputs. Beads owns runtime state.
+# Principle: BMAD owns formal outputs. Beads owns runtime state and coordination.
 
 injectable_critical_actions:
   # Add to ALL agents
   all_agents:
-    - "At session start: `bd list --type decision` and `bd list --type blocker` to check runtime state"
-    - "For runtime decisions (made OUTSIDE workflows): `bd create --type decision`"
-    - "For external blockers: `bd create --type blocker`"
-    - "At session end: `bd sync && git push` - work isn't done until pushed"
-    - "Include DOC: path in Beads notes to link back to BMAD docs"
+    # Session start
+    - "Check HALT conditions first: `bd list --type blocker --priority 0`"
+    - "Check blockers before picking story: `bd list --type blocker --status open`"
+    - "Check work claims: `bd list --type task --status in_progress | grep Working:`"
+
+    # During work
+    - "Claim story before starting: `bd create --title 'Working: Story {key}' --type task --priority 1`"
+    - "Runtime decisions (outside workflows): `bd create --type decision --priority 2`"
+    - "External blockers: `bd create --type blocker --priority 1`"
+    - "HALT conditions: `bd create --type blocker --priority 0` immediately"
+
+    # Session end
+    - "Close work claim when done: `bd close <id>`"
+    - "Push before saying done: `bd sync && git push`"
+    - "Include DOC: path in all Beads notes"
 
   # Role-specific - PM
   pm:
     - "ADRs go in architecture.md (BMAD) - NOT in Beads"
-    - "Scope changes AFTER PRD is done → `bd create --type decision`"
-    - "Phase progress tracked by workflow-status.yaml - NOT Beads"
+    - "Scope changes AFTER PRD done → `bd create --type decision`"
+    - "Phase progress in workflow-status.yaml - NOT Beads"
 
   # Role-specific - Architect
   architect:
-    - "ADRs captured in architecture.md during workflow - NOT in Beads"
+    - "ADRs captured during architecture workflow - NOT in Beads"
     - "Post-architecture technology pivots → `bd create --type decision`"
 
   # Role-specific - SM
   sm:
     - "Story status in sprint-status.yaml - NOT Beads"
-    - "Sprint deferrals/priority changes → `bd create --type decision`"
-    - "Cross-story dependencies → `bd create --type blocker` or `bd dep add`"
+    - "Cross-story dependencies → `bd create --type blocker`"
+    - "Sprint deferrals → `bd create --type decision`"
+    - "Retrospective action items → `bd create --type task` for each"
 
   # Role-specific - DEV
   dev:
+    - "ALWAYS claim story before starting work"
     - "Task checkboxes in story file - NOT Beads"
     - "Mid-implementation discoveries → `bd create --type decision`"
-    - "External blockers → `bd create --type blocker`"
+    - "On HALT: `bd create --type blocker --priority 0` immediately"
 
-# What NOT to track in Beads (BMAD handles these)
+# Priority scale
+priority_guide:
+  0: "HALT conditions, critical blockers"
+  1: "Work claims, urgent blockers"
+  2: "Decisions, action items"
+  3: "Low priority"
+  4: "Backlog"
+
+# What NOT to track in Beads
 do_not_track:
-  - "Phase completion (use bmm-workflow-status.yaml)"
-  - "ADRs (use architecture.md)"
-  - "Story status (use sprint-status.yaml)"
-  - "Task progress (use story file checkboxes)"
-  - "Workflow step progress (use frontmatter stepsCompleted)"
+  - "Phase completion (workflow-status.yaml)"
+  - "ADRs (architecture.md)"
+  - "Story status (sprint-status.yaml)"
+  - "Task progress (story file checkboxes)"
+  - "Code review findings (story file)"
+  - "Retrospective content (retro docs)"
 
-# What TO track in Beads (BMAD can't handle these)
+# What TO track in Beads
 do_track:
-  - "Runtime decisions (choices made OUTSIDE formal workflows)"
-  - "External blockers (waiting on API, approvals, etc.)"
-  - "Cross-story dependencies (story A needs story B first)"
+  - "Work claims (prevent concurrent edits)"
+  - "Runtime decisions (outside formal workflows)"
+  - "External blockers"
+  - "HALT conditions (priority 0)"
+  - "Cross-story dependencies"
+  - "Persistent action items"
 
-# Trigger phrases for human interaction
+# Trigger phrases
 trigger_phrases:
-  "what runtime decisions?": "bd list --type decision"
-  "what's blocked?": "bd list --type blocker"
-  "file that as runtime decision": "bd create --type decision"
-  "that's a blocker": "bd create --type blocker"
+  "any HALTs?": "bd list --type blocker --priority 0"
+  "what's blocked?": "bd list --type blocker --status open"
+  "what decisions?": "bd list --type decision --status open"
+  "who's working?": "bd list --type task --status in_progress"
+  "action items?": "bd list --type task --status open"
+  "claim story X": "bd create --title 'Working: Story X' --type task --priority 1"
+  "HALT": "bd create --type blocker --priority 0"
   "land the plane": "Session close protocol"
 
-# Notes format for context recovery
-notes_format: "WHO: {agent} | WHAT: {choice} | WHY: {reason} | DOC: {bmad_doc_path}"
+# Notes format
+notes_format: "WHO: {agent} | WHAT: {item} | WHY: {reason} | DOC: {bmad_doc_path}"
