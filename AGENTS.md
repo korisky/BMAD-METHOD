@@ -32,7 +32,7 @@ bd init
 bd hooks install
 
 # 3. Load helper aliases (optional but recommended)
-source ./src/modules/bmm/sub-modules/beads/beads-aliases.sh
+source ~/.bmad/beads-aliases.sh  # Installed by BMAD installer
 ```
 
 If Beads is not installed, simply ignore the `bd-*` commands below.

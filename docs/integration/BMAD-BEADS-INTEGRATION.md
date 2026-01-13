@@ -135,6 +135,8 @@ git status
 
 **No manual `bd sync` needed** - hooks handle it.
 
+> **Note**: The Beads Context checklist includes `bd sync` for completeness. If hooks are installed (via `bd hooks install`), git commits automatically sync Beads. You can still run `bd sync` manually if needed.
+
 ---
 
 ## Priority Scale
