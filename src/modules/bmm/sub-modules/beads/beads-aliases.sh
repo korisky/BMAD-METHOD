@@ -53,7 +53,7 @@ bd-claim() {
   fi
 
   # Update status
-  bd update "$id" --status in_progress --notes "AGENT: $(whoami) | STARTED: $(date -Iseconds)" >/dev/null
+  bd update "$id" --status in_progress --notes "AGENT: $(whoami) | STARTED: $(date +%Y-%m-%dT%H:%M:%S%z)" >/dev/null
   echo "Claimed: $id ($story)"
 }
 
