@@ -894,6 +894,8 @@ Bob (Scrum Master): "These agreements are how we're committing to work different
 
 Elena (Junior Dev): "I like agreement 2 - that would've saved me on Story {{difficult_story_num}}."
 
+Bob (Scrum Master): "For team coordination, consider adding these action items to Beads using \`bd-action\`. This helps track progress across sprints."
+
 ═══════════════════════════════════════════════════════════
 🚀 EPIC {{next_epic_num}} PREPARATION TASKS:
 ═══════════════════════════════════════════════════════════
