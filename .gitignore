@@ -43,17 +43,8 @@ CLAUDE.local.md
 .serena/
 .claude/settings.local.json
 
-# Beads (per-project, created by bd init)
-.beads/
-
 # Project-specific
-_bmad-core
-_bmad-creator-tools
-flattened-codebase.xml
 *.stats.md
-.internal-docs/
-#UAT template testing output files
-tools/template-test-generator/test-scenarios/
 
 # Bundler temporary files and generated bundles
 .bundler-temp/
@@ -61,10 +52,6 @@ tools/template-test-generator/test-scenarios/
 # Generated web bundles (built by CI, not committed)
 src/modules/bmm/sub-modules/*/
 src/modules/bmb/sub-modules/
-src/modules/cis/sub-modules/
-src/modules/bmgd/sub-modules/
-# Exception: beads integration sub-module (not generated, part of repo)
-!src/modules/bmm/sub-modules/beads/
 shared-modules
 z*/
 
@@ -86,8 +73,9 @@ website/.astro/
 website/dist/
 build/
 
-# Local experiment directory
-SANDBOX/
 
-# Generated AGENTS.md from template
+# Beads (per-project, created by bd init)
+.beads/
 AGENTS.md
+# Exception: beads integration sub-module (not generated, part of repo)
+!src/modules/bmm/sub-modules/beads/

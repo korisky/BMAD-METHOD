@@ -199,13 +199,13 @@ async function runTests() {
     const aliasesContent = await fs.readFile(beadsAliasesPath, 'utf8');
     assert(aliasesContent.includes('bd-action()'), 'beads-aliases.sh contains bd-action function');
     assert(aliasesContent.includes('bd-claim'), 'beads-aliases.sh contains bd-claim alias');
-    
+
     // Check injections.yaml exists and contains BEADS INTEGRATION marker
     const injectionsPath = path.join(projectRoot, 'src/modules/bmm/sub-modules/beads/injections.yaml');
     const injectionsContent = await fs.readFile(injectionsPath, 'utf8');
     assert(injectionsContent.includes('<!-- BEADS INTEGRATION -->'), 'injections.yaml contains BEADS INTEGRATION marker');
     assert(injectionsContent.includes('beads-enabled'), 'injections.yaml contains beads-enabled flag');
-    
+
     console.log('');
   } catch (error) {
     assert(false, 'Beads integration files exist and are valid', error.message);

@@ -18,13 +18,13 @@ compatible_ides:
 
 # Installation requirements
 requires:
-  - bd  # Beads CLI must be available
+  - bd # Beads CLI must be available
 
 # What this sub-module provides
 features:
-  - work_claiming      # Prevent concurrent story edits
-  - runtime_decisions  # Capture decisions outside workflows
-  - blocker_tracking   # Track external impediments
-  - halt_persistence   # HALT conditions survive context clear
-  - action_items       # Cross-epic action item tracking
-  - auto_sync          # Git hooks for automatic Beads sync
+  - work_claiming # Prevent concurrent story edits
+  - runtime_decisions # Capture decisions outside workflows
+  - blocker_tracking # Track external impediments
+  - halt_persistence # HALT conditions survive context clear
+  - action_items # Cross-epic action item tracking
+  - auto_sync # Git hooks for automatic Beads sync
