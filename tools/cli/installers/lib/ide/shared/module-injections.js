@@ -36,11 +36,8 @@ async function loadModuleInjectionConfig(handler, moduleName) {
  */
 function shouldApplyInjection(injection, subagentChoices, featureFlags = {}) {
   // Check for feature flag requirements first (e.g., 'beads-enabled')
-  if (injection.requires && featureFlags && typeof featureFlags === 'object') {
-    // Check if requires matches a feature flag key
-    if (injection.requires in featureFlags) {
-      return featureFlags[injection.requires] === true;
-    }
+  if (injection.requires && featureFlags && typeof featureFlags === 'object' && injection.requires in featureFlags) {
+    return featureFlags[injection.requires] === true;
   }
 
   // Fall back to subagent-based logic

@@ -84,3 +84,9 @@ bmad-custom-src/
 website/.astro/
 website/dist/
 build/
+
+# Local experiment directory
+SANDBOX/
+
+# Generated AGENTS.md from template
+AGENTS.md
