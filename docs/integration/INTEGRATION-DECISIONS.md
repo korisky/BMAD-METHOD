@@ -1,7 +1,6 @@
-# Integration Design Decisions (v5 - Final)
-
-> Complete rationale for BMAD + Beads integration
-
+---
+title: "Integration Design Decisions (v5 - Final)"
+description: "Complete rationale for BMAD + Beads integration"
 ---
 
 ## Design Evolution

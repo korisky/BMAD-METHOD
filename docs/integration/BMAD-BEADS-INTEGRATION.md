@@ -1,7 +1,6 @@
-# BMAD + Beads Integration (v5 - Efficient)
-
-> BMAD owns formal outputs. Beads owns runtime state. Minimal overhead.
-
+---
+title: "BMAD + Beads Integration (v5 - Efficient)"
+description: "BMAD owns formal outputs. Beads owns runtime state. Minimal overhead."
 ---
 
 ## Design Principles
