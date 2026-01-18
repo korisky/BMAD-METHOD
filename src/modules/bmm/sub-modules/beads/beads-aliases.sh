@@ -150,18 +150,81 @@ bd-session-start() {
   echo "==========================="
 }
 
-# Land the plane - session end helper
+# Land the plane - session end helper with branch sync
 bd-land() {
   echo "=== LANDING THE PLANE ==="
   echo ""
+
+  local current_branch=$(git branch --show-current)
+
+  # 1. Check open claims
   echo "1. Checking for open claims..."
-  bd list --type task --status in_progress
+  local claims=$(bd list --type task --status in_progress 2>/dev/null)
+  if [ -n "$claims" ]; then
+    echo "$claims"
+    echo ""
+    echo "⚠️  You have open claims. Release them with: bd-release <id>"
+    echo ""
+  else
+    echo "  None"
+    echo ""
+  fi
+
+  # 2. Check if we're in a git repo
+  if ! git rev-parse --git-dir > /dev/null 2>&1; then
+    echo "❌ Not a git repository"
+    return 1
+  fi
+
+  # 3. Check for uncommitted changes
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "⚠️  You have uncommitted changes. Commit first:"
+    echo "  git add . && git commit -m '...'"
+    echo ""
+    echo "Note: Pre-commit hook will auto-sync beads on commit"
+    return 1
+  fi
+
+  # 4. Sync branches (beads-sync → main → current)
+  echo "2. Syncing branches (beads-sync → main → $current_branch)..."
   echo ""
-  echo "2. Syncing Beads..."
-  bd sync
+
+  # Fetch latest
+  git fetch origin 2>/dev/null || true
+
+  # Check if beads-sync exists
+  if ! git rev-parse --verify beads-sync >/dev/null 2>&1; then
+    echo "⚠️  beads-sync branch not found. Skipping branch sync."
+    echo "  (This is normal if beads daemon isn't running)"
+    return 0
+  fi
+
+  # Sync to main
+  git checkout main || { echo "❌ Can't checkout main"; return 1; }
+
+  if git merge beads-sync --no-ff -m "merge: sync beads tracking" 2>/dev/null; then
+    echo "  ✅ main synced with beads-sync"
+  else
+    echo "  ℹ️  main already up to date"
+  fi
+
+  git push origin main 2>/dev/null || echo "  ⚠️  Can't push to origin/main (maybe protected?)"
+
+  # Sync to current branch
+  if [ "$current_branch" != "main" ]; then
+    git checkout "$current_branch" || { echo "❌ Can't checkout $current_branch"; return 1; }
+
+    if git merge main --no-ff -m "merge: sync from main" 2>/dev/null; then
+      echo "  ✅ $current_branch synced with main"
+    else
+      echo "  ℹ️  $current_branch already up to date"
+    fi
+
+    git push origin "$current_branch" 2>/dev/null || echo "  ⚠️  Can't push to origin/$current_branch"
+  fi
+
   echo ""
-  echo "3. Now run: git add -A && git commit && git push"
-  echo ""
+  echo "✅ All synced. Ready to continue working."
 }
 
 # ============================================
@@ -170,6 +233,11 @@ bd-land() {
 
 bd-help() {
   echo "BMAD + Beads Integration Commands"
+  echo ""
+  echo "📋 SIMPLE WORKFLOW:"
+  echo "  1. git add . && git commit -m '...' (auto-syncs beads)"
+  echo "  2. bd-land (syncs branches: beads-sync → main → current)"
+  echo "  3. git push"
   echo ""
   echo "STATUS:"
   echo "  bd-status        - Ready work + blockers"
@@ -191,7 +259,10 @@ bd-help() {
   echo ""
   echo "SESSION:"
   echo "  bd-session-start - Full status check"
-  echo "  bd-land          - Land the plane helper"
+  echo "  bd-land          - Sync branches (run before push)"
+  echo ""
+  echo "📚 Documentation:"
+  echo "  docs/beads-git-workflow.md (or ~/.bmad/beads-git-workflow.md)"
   echo ""
 }
 
