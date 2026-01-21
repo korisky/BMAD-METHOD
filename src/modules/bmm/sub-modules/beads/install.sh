@@ -46,10 +46,7 @@ if [ -d ".git" ]; then
 # BMAD + Beads auto-sync (added by beads installer)
 if [ -d ".beads" ] && command -v bd &> /dev/null; then
     echo "Syncing beads..."
-    bd sync || {
-        echo "❌ Beads sync failed. Fix and retry commit."
-        exit 1
-    }
+    bd sync || echo "⚠️  Beads sync failed - run 'bd-land' later to sync"
 fi
 EOF
         echo "  ✅ Beads sync appended to existing hook"
@@ -60,10 +57,7 @@ EOF
 
 if [ -d ".beads" ] && command -v bd &> /dev/null; then
     echo "Syncing beads..."
-    bd sync || {
-        echo "❌ Beads sync failed. Fix and retry commit."
-        exit 1
-    }
+    bd sync || echo "⚠️  Beads sync failed - run 'bd-land' later to sync"
 fi
 
 exit 0
@@ -93,20 +87,33 @@ mkdir -p "$ALIASES_DIR"
 cp "$SCRIPT_DIR/beads-aliases.sh" "$ALIASES_DIR/beads-aliases.sh"
 echo "  Aliases installed to $ALIASES_DIR/beads-aliases.sh"
 
-# 6. Copy beads-git-workflow documentation
+# 6. Copy workflow documentation
 echo ""
-echo "Installing beads-git-workflow documentation..."
+echo "Installing workflow documentation..."
+mkdir -p "$PROJECT_ROOT/docs"
+
+# Copy beads-git-workflow.md
 if [ -f "$SCRIPT_DIR/beads-git-workflow.md" ]; then
-    # Copy to project docs/
-    mkdir -p "$PROJECT_ROOT/docs"
     cp "$SCRIPT_DIR/beads-git-workflow.md" "$PROJECT_ROOT/docs/beads-git-workflow.md"
-    echo "  ✅ Documentation installed to $PROJECT_ROOT/docs/beads-git-workflow.md"
+    echo "  ✅ beads-git-workflow.md installed to $PROJECT_ROOT/docs/"
 
     # Also copy to ~/.bmad/ for quick reference
     cp "$SCRIPT_DIR/beads-git-workflow.md" "$ALIASES_DIR/beads-git-workflow.md"
-    echo "  ✅ Reference copy installed to $ALIASES_DIR/beads-git-workflow.md"
+    echo "  ✅ Reference copy installed to $ALIASES_DIR/"
 else
     echo "  ⚠️  beads-git-workflow.md not found in installer, skipping"
+fi
+
+# Copy bmad-workflow-guide.md
+if [ -f "$SCRIPT_DIR/bmad-workflow-guide.md" ]; then
+    cp "$SCRIPT_DIR/bmad-workflow-guide.md" "$PROJECT_ROOT/docs/bmad-workflow-guide.md"
+    echo "  ✅ bmad-workflow-guide.md installed to $PROJECT_ROOT/docs/"
+
+    # Also copy to ~/.bmad/ for quick reference
+    cp "$SCRIPT_DIR/bmad-workflow-guide.md" "$ALIASES_DIR/bmad-workflow-guide.md"
+    echo "  ✅ Reference copy installed to $ALIASES_DIR/"
+else
+    echo "  ⚠️  bmad-workflow-guide.md not found in installer, skipping"
 fi
 
 # 7. Detect shell and add source line
@@ -147,8 +154,9 @@ echo "  bd-land       - Sync branches (run before push)"
 echo "  bd-help       - Show all commands"
 echo ""
 echo "📚 Documentation:"
-echo "  docs/beads-git-workflow.md    - Full git workflow guide (in project)"
-echo "  ~/.bmad/beads-git-workflow.md - Quick reference copy"
+echo "  docs/bmad-workflow-guide.md   - Strategic workflow guide (phases, ADRs, sprints)"
+echo "  docs/beads-git-workflow.md    - Git workflow guide (branching, sync, recovery)"
+echo "  ~/.bmad/                      - Quick reference copies"
 echo ""
 echo "⚡ Next Steps:"
 echo "  1. Restart terminal or run: source ~/.bmad/beads-aliases.sh"
