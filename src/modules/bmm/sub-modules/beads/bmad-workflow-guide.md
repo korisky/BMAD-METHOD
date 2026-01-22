@@ -1,6 +1,9 @@
 # Development Workflow Guide
 
 > BMAD + Beads integration. Human commits freely, agent syncs later.
+>
+> This file covers strategic workflow (phases, ADRs, sprints).
+> For git branch sync procedures, see `docs/beads-git-workflow.md`.
 
 ---
 
@@ -24,7 +27,21 @@ beads-sync (Beads-managed, issue metadata only)
 - Beads auto-commit: disabled
 - You review all changes before commit
 - Hooks warn but don't block commits
-- Run `bd-land` at session end to sync all branches
+- Run `[HO]` handover workflow at session end to sync all branches
+
+---
+
+## Beads Configuration
+
+```
+Auto-Commit: false
+Auto-Push: false
+Sync Branch: beads-sync (separate from code)
+```
+
+Hooks installed: `pre-commit`, `post-merge`, `post-checkout`, `prepare-commit-msg`, `pre-push`
+
+These sync **issue metadata only** - not code commits
 
 ---
 
@@ -173,18 +190,27 @@ git add -p && git commit  # Commit what you approve
 git checkout -b agent/story-{id}-{desc}
 # ... Claude codes and commits ...
 gh pr create --base dev
+
+# Session end (all phases)
+# Run [HO] handover workflow or manually:
+bd-land               # Sync all branches
 ```
 
 ---
 
-## Agent Cleanup
+## Session End (Handover)
 
-When branches diverge or sync was skipped during commits, run:
+At the end of every session, run the `[HO]` handover workflow:
 
 ```bash
-bd-land
-```
+# Via agent menu
+[HO]
 
-This syncs `beads-sync → main → current branch` in one command.
+# Or manually
+bd-release <claim-id>     # Release any claims
+bd-land                   # Sync beads-sync → main → current branch
+git push origin HEAD      # Push if needed
+bd-status                 # Report next ready work
+```
 
 For complex recovery scenarios, see `docs/beads-git-workflow.md`.

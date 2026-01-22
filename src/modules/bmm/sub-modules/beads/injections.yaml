@@ -20,9 +20,8 @@ injections:
       - HALT conditions: `bd-halt "{reason}"` immediately
 
       **Session End:**
-      - Release claim: `bd-release {claim-id}`
-      - Git hooks auto-sync Beads on commit
-      - Push before saying done
+      - Run `[HO]` handover workflow to sync branches and release claims
+      - Or manually: `bd-release {claim-id}` then `bd-land` then `git push`
       <!-- END BEADS INTEGRATION -->
 
   - file: "_bmad/bmm/agents/sm.md"
@@ -41,8 +40,8 @@ injections:
       - Retrospective action items: `bd create --type task --title "Action: {item}"`
 
       **Session End:**
-      - Git hooks auto-sync Beads on commit
-      - Push before saying done
+      - Run `[HO]` handover workflow to sync branches
+      - Or manually: `bd-land` then `git push`
       <!-- END BEADS INTEGRATION -->
 
   - file: "_bmad/bmm/agents/pm.md"
@@ -61,7 +60,7 @@ injections:
       - Priority changes: `bd-decision "Priority: {change}"`
 
       **Session End:**
-      - Push before saying done
+      - Run `[HO]` handover workflow or manually push changes
       <!-- END BEADS INTEGRATION -->
 
   - file: "_bmad/bmm/agents/architect.md"
@@ -79,7 +78,7 @@ injections:
       - Pattern changes: `bd-decision "Pattern: {change}"`
 
       **Session End:**
-      - Push before saying done
+      - Run `[HO]` handover workflow or manually push changes
       <!-- END BEADS INTEGRATION -->
 
 # Shell aliases to install

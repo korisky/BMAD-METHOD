@@ -93,6 +93,9 @@ bd ready --limit 3
 3. **Fast-forward only (`--ff-only`)**: Prevents merge commits if branches diverged (alerts you early)
 4. **Regular syncing**: Prevents branches from diverging in the first place
 
+> **Note:** The `bd-land` command uses `--no-ff` for convenience (always creates a merge commit).
+> Use `--ff-only` manually when you want early divergence detection—it will fail if branches have diverged, alerting you to investigate before proceeding.
+
 ---
 
 ## Implementation Guide

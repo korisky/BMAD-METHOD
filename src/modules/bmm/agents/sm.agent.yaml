@@ -45,3 +45,7 @@ agent:
     - trigger: CC or fuzzy match on correct-course
       workflow: "{project-root}/_bmad/bmm/workflows/4-implementation/correct-course/workflow.yaml"
       description: "[CC] Execute correct-course task (When implementation is off-track)"
+
+    - trigger: HO or fuzzy match on handover
+      workflow: "{project-root}/_bmad/bmm/workflows/4-implementation/handover/workflow.yaml"
+      description: "[HO] Handover session - sync branches, release claims, push changes"

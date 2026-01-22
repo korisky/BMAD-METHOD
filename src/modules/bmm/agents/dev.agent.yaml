@@ -43,3 +43,7 @@ agent:
     - trigger: CR or fuzzy match on code-review
       workflow: "{project-root}/_bmad/bmm/workflows/4-implementation/code-review/workflow.yaml"
       description: "[CR] Perform a thorough clean context code review (Highly Recommended, use fresh context and different LLM)"
+
+    - trigger: HO or fuzzy match on handover
+      workflow: "{project-root}/_bmad/bmm/workflows/4-implementation/handover/workflow.yaml"
+      description: "[HO] Handover session - sync branches, release claims, push changes"

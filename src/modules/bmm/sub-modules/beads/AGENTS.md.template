@@ -4,7 +4,17 @@
 > Hooks auto-call this in Claude Code when .beads/ detected
 
 > **Workflow Guide**: See `docs/bmad-workflow-guide.md` for strategic workflow patterns
-> (phases, branch strategy, ADRs, sprints, agent cleanup)
+> (phases, branch strategy, ADRs, sprints, session handover)
+
+---
+
+## Required Reading (Before Starting)
+
+**ALWAYS** review these files in order:
+1. `project-context.md` - Project-specific rules and patterns
+2. `docs/bmad-workflow-guide.md` - Current development workflow
+3. `sprint-status.yaml` - Current sprint and story status
+4. This file - Beads coordination commands
 
 ---
 
@@ -42,14 +52,24 @@ bd-action "title"      # Action item
 
 ## Session End
 
+Run the `[HO]` handover workflow to safely end your session:
+
+```bash
+[HO]                   # Run handover workflow
+```
+
+Or manually:
+
 ```bash
 bd-release <id>        # Release claim (if you claimed)
 git add <files>        # Stage changes
 git commit -m "..."    # Hooks auto-sync Beads
+bd-land                # Sync all branches (beads-sync → main → current)
 git push               # Push to remote
+bd-status              # Report next ready work
 ```
 
-> **Note**: Git hooks auto-sync Beads on commit. Manual `bd sync` only needed if hooks aren't installed.
+> **Note**: The `[HO]` workflow handles all of this automatically. Use it to ensure proper branch sync.
 
 ---
 
@@ -100,6 +120,50 @@ These belong in BMAD files:
 - **HALTs** - Critical failures that must persist
 - **Cross-story deps** - Story B needs Story A
 - **Action items** - Cross-epic visibility
+
+---
+
+## Role-Specific Guidance
+
+### Developer (DEV)
+- Run `bd-claim` before starting any story work
+- Focus on implementation quality following `project-context.md`
+- Run `[HO]` handover before ending session
+
+### Scrum Master (SM)
+- Track cross-story dependencies via `bd-blocker "Dep: Story B needs A"`
+- Sprint deferrals: `bd-decision "Defer: {story} to next sprint"`
+- Run `[HO]` handover before ending session
+
+### Project Manager (PM)
+- ADRs go in `architecture.md` (BMAD) - NOT in Beads
+- Scope/priority changes: `bd-decision "Scope: {change}"`
+- Phase progress tracked in `workflow-status.yaml`
+
+### Architect (ARCH)
+- ADRs captured in `architecture.md` during workflow
+- Technology pivots: `bd-decision "Tech: {change}"`
+- Pattern changes: `bd-decision "Pattern: {change}"`
+
+---
+
+## Troubleshooting
+
+**"I don't know what pattern to use"**
+→ Check `project-context.md` first
+→ Look for similar existing code
+
+**"Branch sync failed"**
+→ Run `git worktree list` to check conflicts
+→ See `docs/beads-git-workflow.md` for recovery
+
+**"bd-land failed"**
+→ Check if branches have diverged
+→ Manual sync: merge `beads-sync` → `main` → your branch
+
+**"Can't checkout to main"**
+→ Another worktree has `main` checked out
+→ Run: `git -C .git/beads-worktrees/beads-sync checkout beads-sync`
 
 ---
 
