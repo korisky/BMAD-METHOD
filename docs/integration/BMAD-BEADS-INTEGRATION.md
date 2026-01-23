@@ -113,28 +113,27 @@ bd update <id> --notes "AFFECTS: Story 1-3 | OWNER: devops | ETA: unknown"
 
 ---
 
-## Session End (With Hooks)
-
-If `bd hooks install` was run, git operations auto-sync Beads.
+## Session End (Simple Workflow)
 
 ```bash
-# 1. Release claim
+# 1. Release any claims
 bd-release <claim-id>
 
-# 2. Commit (hooks auto-sync Beads)
-git add -A
-git commit -m "{message}"
+# 2. Check if ready to push
+bd-preflight
 
-# 3. Push
+# 3. If ❌ Not ready: sync branches first
+bd-land
+bd-preflight  # verify again
+
+# 4. If ✅ Ready: push
 git push
-
-# 4. Verify
-git status
 ```
 
-**No manual `bd sync` needed** - hooks handle it.
-
-> **Note**: The Beads Context checklist includes `bd sync` for completeness. If hooks are installed (via `bd hooks install`), git commits automatically sync Beads. You can still run `bd sync` manually if needed.
+**Key Commands:**
+- `bd-preflight` - Check if ready to push (always run this)
+- `bd-land` - Sync branches (beads-sync → main → current)
+- `bd-fix` - Auto-fix common issues
 
 ---
 
@@ -248,18 +247,20 @@ SESSION START:
   bd-claim "story"       # Claim before starting
 
 DURING WORK:
-  bd-decision "..."      # Runtime decision
-  bd-blocker "..."       # External blocker
+  (commit normally - hooks auto-sync beads)
   bd-halt "..."          # Critical failure (P0)
+  bd-blocker "..."       # External blocker
+  bd-decision "..."      # Runtime decision
 
 SESSION END:
   bd-release <id>        # Release claim
-  git commit && push     # Hooks sync Beads
+  bd-preflight           # Check if ready to push
+  (if ❌) bd-land        # Sync branches
+  (if ✅) git push       # Done!
 
-QUERIES:
-  bd-next                # Ready work
-  bd ready --pretty      # Full ready view
-  bd list --type X       # Filter by type
+TROUBLESHOOTING:
+  bd-fix                 # Auto-fix common issues
+  bd-help                # Show all commands
 ```
 
 ---
@@ -273,6 +274,20 @@ QUERIES:
 | Manual `bd sync` | Git hooks auto-sync | Zero manual sync |
 | Long command strings | Short aliases | Faster typing |
 | Check then cross-reference | `bd ready` does it | Built-in intelligence |
+
+---
+
+## Recent Review (2026-01-22)
+
+A comprehensive review of the current integration identified critical gaps that need addressing for production team use. 
+
+**Key Findings**:
+- Git workflow implementation gap (three-way sync documented but not enforced)
+- Missing validation and error handling in installer
+- Clarity gaps in agent instructions
+- No recovery commands for common failure scenarios
+
+**See full review**: [BMAD-BEADS-INTEGRATION-REVIEW.md](./BMAD-BEADS-INTEGRATION-REVIEW.md) for detailed analysis and prioritized recommendations.
 
 ---
 

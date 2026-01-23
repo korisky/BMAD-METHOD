@@ -10,18 +10,27 @@ injections:
       <!-- BEADS INTEGRATION -->
       ## Beads Runtime Coordination
 
+      **When to Use Beads vs BMAD:**
+      - BMAD: Formal outputs (story status, ADRs, workflow progress)
+      - Beads: Runtime coordination (claims, blockers, decisions during work)
+
       **Session Start:**
-      - Run `bd-status` to see ready work and active blockers
-      - Run `bd-claim "{story-key}"` before starting any story work
+      - `bd-status` → see ready work and blockers
+      - `bd-claim "{story-key}"` → before starting work
 
       **During Work:**
-      - Runtime decisions (outside workflow): `bd-decision "{title}"`
-      - External blockers: `bd-blocker "{title}"`
-      - HALT conditions: `bd-halt "{reason}"` immediately
+      - Commit normally (hook auto-syncs beads)
+      - `bd-halt "{reason}"` → critical blocker (stops work)
+      - `bd-blocker "{title}"` → external blocker
+      - `bd-decision "{title}"` → runtime decision
 
-      **Session End:**
-      - Run `[HO]` handover workflow to sync branches and release claims
-      - Or manually: `bd-release {claim-id}` then `bd-land` then `git push`
+      **Session End (ALWAYS):**
+      1. `bd-release {id}` → release claims
+      2. `bd-preflight` → check if ready to push
+      3. If ❌: `bd-land` then `bd-preflight` again
+      4. If ✅: `git push`
+
+      **Something Broke?** Run `bd-fix`
       <!-- END BEADS INTEGRATION -->
 
   - file: "_bmad/bmm/agents/sm.md"
@@ -31,17 +40,22 @@ injections:
       <!-- BEADS INTEGRATION -->
       ## Beads Runtime Coordination
 
+      **When to Use Beads vs BMAD:**
+      - BMAD: Sprint status (sprint-status.yaml), story tracking
+      - Beads: Cross-story blockers, runtime decisions, action items
+
       **Session Start:**
-      - Run `bd-status` to see ready work and active blockers
+      - `bd-status` → see blockers across stories
 
       **Sprint Management:**
-      - Cross-story dependencies: `bd-blocker "Dep: Story {B} needs {A}"`
-      - Sprint deferrals: `bd-decision "Defer: {story} to next sprint"`
-      - Retrospective action items: `bd create --type task --title "Action: {item}"`
+      - `bd-blocker "Dep: Story {B} needs {A}"` → cross-story deps
+      - `bd-decision "Defer: {story} to next sprint"` → deferrals
+      - `bd-action "Action: {item}"` → retrospective items
 
       **Session End:**
-      - Run `[HO]` handover workflow to sync branches
-      - Or manually: `bd-land` then `git push`
+      1. `bd-preflight` → check if ready
+      2. If ❌: `bd-land` then `bd-preflight` again
+      3. If ✅: `git push`
       <!-- END BEADS INTEGRATION -->
 
   - file: "_bmad/bmm/agents/pm.md"
@@ -51,16 +65,18 @@ injections:
       <!-- BEADS INTEGRATION -->
       ## Beads Runtime Coordination
 
-      **Important:**
-      - ADRs go in architecture.md (BMAD) - NOT in Beads
-      - Phase progress tracked by workflow-status.yaml - NOT Beads
+      **When to Use Beads vs BMAD:**
+      - BMAD: ADRs (architecture.md), phase progress (workflow-status.yaml)
+      - Beads: Runtime scope/priority changes AFTER formal workflows
 
-      **Runtime Decisions (AFTER formal workflows):**
-      - Scope changes: `bd-decision "Scope: {change}"`
-      - Priority changes: `bd-decision "Priority: {change}"`
+      **Runtime Decisions:**
+      - `bd-decision "Scope: {change}"` → scope changes
+      - `bd-decision "Priority: {change}"` → priority changes
 
       **Session End:**
-      - Run `[HO]` handover workflow or manually push changes
+      1. `bd-preflight` → check if ready
+      2. If ❌: `bd-land` then `bd-preflight` again
+      3. If ✅: `git push`
       <!-- END BEADS INTEGRATION -->
 
   - file: "_bmad/bmm/agents/architect.md"
@@ -70,15 +86,18 @@ injections:
       <!-- BEADS INTEGRATION -->
       ## Beads Runtime Coordination
 
-      **Important:**
-      - ADRs captured in architecture.md during workflow - NOT in Beads
+      **When to Use Beads vs BMAD:**
+      - BMAD: ADRs captured in architecture.md during workflow
+      - Beads: Post-workflow tech/pattern changes only
 
       **Post-Architecture Changes:**
-      - Technology pivots: `bd-decision "Tech: {change}"`
-      - Pattern changes: `bd-decision "Pattern: {change}"`
+      - `bd-decision "Tech: {change}"` → technology pivots
+      - `bd-decision "Pattern: {change}"` → pattern changes
 
       **Session End:**
-      - Run `[HO]` handover workflow or manually push changes
+      1. `bd-preflight` → check if ready
+      2. If ❌: `bd-land` then `bd-preflight` again
+      3. If ✅: `git push`
       <!-- END BEADS INTEGRATION -->
 
 # Shell aliases to install

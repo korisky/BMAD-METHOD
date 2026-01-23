@@ -24,64 +24,44 @@ If you claimed a story during this session:
 bd-release <claim-id>
 ```
 
-Or release all your claims:
-
-```bash
-bd list --status in_progress --assigned @me | xargs -I {} bd-release {}
-```
-
-### Step 2: Check for Uncommitted Changes
+### Step 2: Commit Any Remaining Changes
 
 ```bash
 git status
-```
-
-**If uncommitted changes exist:**
-
-```bash
+# If changes exist:
 git add <files>
-git commit -m "type: description
-
-- Bullet point 1
-- Bullet point 2"
+git commit -m "type: description"
 ```
 
-### Step 3: Run bd-land (Three-Way Branch Sync)
-
-This syncs `beads-sync -> main -> current branch` in one command:
+### Step 3: Check If Ready to Push
 
 ```bash
-bd-land
+bd-preflight
 ```
 
-**What bd-land does:**
-1. Merges `beads-sync` into `main` (brings Beads tracking data)
-2. Pushes `main` to remote
-3. Merges `main` into your current branch
-4. Syncs Beads and pushes current branch
+This checks:
+- ✅ Working tree clean
+- ✅ Branches synced (beads-sync → main)
+- ✅ No open claims
 
-### Step 4: Push to Remote
+### Step 4: If Not Ready, Sync Branches
 
-If bd-land didn't push your branch (e.g., you're on a feature branch):
+If `bd-preflight` shows ❌:
 
 ```bash
-git push origin HEAD
+bd-land        # Sync: beads-sync → main → current branch
+bd-preflight   # Verify again
 ```
 
-### Step 5: Verify Sync Status
+### Step 5: Push When Ready
+
+When `bd-preflight` shows ✅:
 
 ```bash
-bd sync --status
-git log --oneline -5
+git push
 ```
 
-### Step 6: Report Next Ready Work
-
-```bash
-bd-next
-```
-
-Or for more detail:
+### Step 6: Report Next Ready Work (Optional)
 
 ```bash
 bd-status
@@ -94,27 +74,39 @@ bd-status
 **Full handover sequence:**
 
 ```bash
-# 1. Release claims (if any)
+# 1. Release claims
 bd-release <claim-id>
 
-# 2. Commit any remaining changes
-git add . && git commit -m "wip: session end checkpoint"
+# 2. Commit changes
+git add . && git commit -m "wip: session checkpoint"
 
-# 3. Sync all branches
-bd-land
+# 3. Check if ready
+bd-preflight
 
-# 4. Push if needed
-git push origin HEAD
+# 4. If ❌: sync branches
+bd-land && bd-preflight
 
-# 5. Report status
-bd-status
+# 5. If ✅: push
+git push
 ```
+
+**Something broke?** Run `bd-fix`
 
 ---
 
-## When bd-land Fails
+## When Things Go Wrong
 
-If `bd-land` fails due to merge conflicts or worktree issues:
+**First, try auto-fix:**
+
+```bash
+bd-fix
+```
+
+This handles common issues like:
+- Worktree on wrong branch
+- Branch sync needed
+
+**If bd-fix doesn't work, manual recovery:**
 
 1. **Check worktree status:**
    ```bash

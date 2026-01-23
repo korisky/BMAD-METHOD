@@ -125,6 +125,34 @@ bd-action() {
 }
 
 # ============================================
+# QUICK COMMIT (Human-Agent Mixed Workflow)
+# ============================================
+
+# Quick commit - skips heavy tests, runs lint-staged + beads sync only
+# Usage: bd-quick "wip: iteration message"
+bd-quick() {
+  local msg="$1"
+  if [ -z "$msg" ]; then
+    echo "Usage: bd-quick <commit-message>"
+    echo "  Runs lint-staged + beads sync, skips full test suite"
+    return 1
+  fi
+  BMAD_QUICK=1 git commit -m "$msg"
+}
+
+# Quick add and commit
+# Usage: bd-qadd "wip: iteration"
+bd-qadd() {
+  local msg="$1"
+  if [ -z "$msg" ]; then
+    echo "Usage: bd-qadd <commit-message>"
+    echo "  Stages all changes, then quick commits"
+    return 1
+  fi
+  git add -A && BMAD_QUICK=1 git commit -m "$msg"
+}
+
+# ============================================
 # SESSION HELPERS
 # ============================================
 
@@ -157,6 +185,10 @@ bd-land() {
 
   local current_branch=$(git branch --show-current)
 
+  # Detect default branch (main or master)
+  local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+  default_branch=${default_branch:-main}
+
   # 1. Check open claims
   echo "1. Checking for open claims..."
   local claims=$(bd list --type task --status in_progress 2>/dev/null)
@@ -185,8 +217,8 @@ bd-land() {
     return 1
   fi
 
-  # 4. Sync branches (beads-sync → main → current)
-  echo "2. Syncing branches (beads-sync → main → $current_branch)..."
+  # 4. Sync branches (beads-sync → default → current)
+  echo "2. Syncing branches (beads-sync → $default_branch → $current_branch)..."
   echo ""
 
   # Fetch latest
@@ -199,23 +231,23 @@ bd-land() {
     return 0
   fi
 
-  # Sync to main
-  git checkout main || { echo "❌ Can't checkout main"; return 1; }
+  # Sync to default branch (main/master)
+  git checkout "$default_branch" || { echo "❌ Can't checkout $default_branch"; return 1; }
 
   if git merge beads-sync --no-ff -m "merge: sync beads tracking" 2>/dev/null; then
-    echo "  ✅ main synced with beads-sync"
+    echo "  ✅ $default_branch synced with beads-sync"
   else
-    echo "  ℹ️  main already up to date"
+    echo "  ℹ️  $default_branch already up to date"
   fi
 
-  git push origin main 2>/dev/null || echo "  ⚠️  Can't push to origin/main (maybe protected?)"
+  git push origin "$default_branch" 2>/dev/null || echo "  ⚠️  Can't push to origin/$default_branch (maybe protected?)"
 
   # Sync to current branch
-  if [ "$current_branch" != "main" ]; then
+  if [ "$current_branch" != "$default_branch" ]; then
     git checkout "$current_branch" || { echo "❌ Can't checkout $current_branch"; return 1; }
 
-    if git merge main --no-ff -m "merge: sync from main" 2>/dev/null; then
-      echo "  ✅ $current_branch synced with main"
+    if git merge "$default_branch" --no-ff -m "merge: sync from $default_branch" 2>/dev/null; then
+      echo "  ✅ $current_branch synced with $default_branch"
     else
       echo "  ℹ️  $current_branch already up to date"
     fi
@@ -228,6 +260,98 @@ bd-land() {
 }
 
 # ============================================
+# PRE-PUSH CHECK
+# ============================================
+
+# Check if ready to push (for humans and agents)
+bd-preflight() {
+  echo "=== Pre-Push Checklist ==="
+  local ok=true
+
+  # 1. Uncommitted changes?
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "❌ Uncommitted changes (commit first)"
+    ok=false
+  else
+    echo "✅ Working tree clean"
+  fi
+
+  # 2. Branch sync status (only if beads-sync exists)
+  if git rev-parse --verify beads-sync >/dev/null 2>&1; then
+    git fetch origin 2>/dev/null || true
+    local behind=$(git rev-list --count main..beads-sync 2>/dev/null || echo 0)
+    if [ "$behind" -gt 0 ]; then
+      echo "❌ beads-sync has $behind commits not in main (run bd-land)"
+      ok=false
+    else
+      echo "✅ Branches synced"
+    fi
+  else
+    echo "⚠️  No beads-sync branch (daemon not running - this is OK for solo work)"
+  fi
+
+  # 3. Open claims?
+  if command -v bd >/dev/null 2>&1; then
+    local claims=$(bd list --type task --status in_progress 2>/dev/null | grep -v "^$" | head -1)
+    if [ -n "$claims" ]; then
+      echo "⚠️  Open claims exist (consider releasing with bd-release)"
+    else
+      echo "✅ No open claims"
+    fi
+  fi
+
+  # Verdict
+  echo ""
+  if [ "$ok" = true ]; then
+    echo "✅ Ready to push: git push"
+    return 0
+  else
+    echo "❌ Not ready. Fix issues above."
+    echo "   Then run: bd-preflight"
+    return 1
+  fi
+}
+
+# ============================================
+# AUTO-RECOVERY
+# ============================================
+
+# Attempt to auto-fix common beads issues
+bd-fix() {
+  echo "=== Auto-Fix Attempt ==="
+  local fixed=false
+
+  # 1. Check if beads-sync worktree is on wrong branch
+  if [ -d ".git/beads-worktrees/beads-sync" ]; then
+    local wt_branch=$(git -C .git/beads-worktrees/beads-sync branch --show-current 2>/dev/null)
+    if [ -n "$wt_branch" ] && [ "$wt_branch" != "beads-sync" ]; then
+      echo "Fixing: worktree on wrong branch ($wt_branch → beads-sync)"
+      git -C .git/beads-worktrees/beads-sync checkout beads-sync 2>/dev/null && fixed=true
+    fi
+  fi
+
+  # 2. Check for uncommitted changes
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "⚠️  You have uncommitted changes. Commit them first:"
+    echo "   git add . && git commit -m 'your message'"
+    return 1
+  fi
+
+  # 3. Try bd-land to sync branches
+  echo "Running bd-land to sync branches..."
+  if bd-land; then
+    echo ""
+    echo "✅ Fixed! Run bd-preflight to verify."
+    return 0
+  else
+    echo ""
+    echo "❌ Auto-fix couldn't resolve all issues."
+    echo "   See: docs/beads-git-workflow.md for manual recovery"
+    return 1
+  fi
+}
+
+# ============================================
 # HELP
 # ============================================
 
@@ -235,34 +359,38 @@ bd-help() {
   echo "BMAD + Beads Integration Commands"
   echo ""
   echo "📋 SIMPLE WORKFLOW:"
-  echo "  1. git add . && git commit -m '...' (auto-syncs beads)"
-  echo "  2. bd-land (syncs branches: beads-sync → main → current)"
-  echo "  3. git push"
+  echo "  1. Work & commit normally (hook auto-syncs beads)"
+  echo "  2. bd-preflight  → check if ready to push"
+  echo "  3. If ❌: bd-land → sync branches, then bd-preflight again"
+  echo "  4. If ✅: git push"
+  echo ""
+  echo "🔧 CORE COMMANDS:"
+  echo "  bd-preflight     - Check if ready to push (run this!)"
+  echo "  bd-land          - Sync branches (beads-sync → main → current)"
+  echo "  bd-fix           - Auto-fix common issues"
+  echo ""
+  echo "⚡ QUICK COMMITS (human-agent mixed workflow):"
+  echo "  bd-quick <msg>   - Commit with lint-staged only (skip tests)"
+  echo "  bd-qadd <msg>    - Stage all + quick commit"
   echo ""
   echo "STATUS:"
   echo "  bd-status        - Ready work + blockers"
   echo "  bd-next          - Ready work only"
   echo "  bd-blockers      - All blockers"
-  echo "  bd-decisions     - All decisions"
   echo "  bd-halts         - Critical issues (P0)"
-  echo "  bd-who           - Who's working on what"
   echo ""
   echo "CLAIMING:"
-  echo "  bd-claim <story> - Claim a story"
-  echo "  bd-release <id>  - Release a claim"
+  echo "  bd-claim <story> - Claim a story before starting"
+  echo "  bd-release <id>  - Release a claim when done"
   echo ""
   echo "CREATE:"
-  echo "  bd-halt <reason> - Create HALT (P0)"
-  echo "  bd-decision <t>  - Create decision"
+  echo "  bd-halt <reason> - Create HALT (P0 blocker)"
+  echo "  bd-decision <t>  - Create runtime decision"
   echo "  bd-blocker <t>   - Create blocker"
   echo "  bd-action <t>    - Create action item"
   echo ""
-  echo "SESSION:"
-  echo "  bd-session-start - Full status check"
-  echo "  bd-land          - Sync branches (run before push)"
-  echo ""
   echo "📚 Documentation:"
-  echo "  docs/beads-git-workflow.md (or ~/.bmad/beads-git-workflow.md)"
+  echo "  docs/beads-git-workflow.md"
   echo ""
 }
 

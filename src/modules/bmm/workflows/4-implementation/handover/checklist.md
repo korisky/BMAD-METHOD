@@ -13,51 +13,42 @@ optional-inputs:
 
 # Handover Checklist
 
-**Verify all items before ending session:**
+**Run `bd-preflight` to verify most items automatically.**
 
-## Beads Coordination
+## Before Handover
 
-- [ ] **Claims Released:** All story claims released (`bd-release`)
-- [ ] **No Active HALTs:** No unresolved HALT conditions (`bd list --priority 0`)
+- [ ] **Claims Released:** `bd-release <id>` for any claimed stories
+- [ ] **Changes Committed:** `git status` shows clean tree
 
-## Git State
+## Preflight Check
 
-- [ ] **No Uncommitted Changes:** `git status` shows clean working tree (or changes intentionally left)
-- [ ] **Commits Pushed:** All commits pushed to remote (`git push`)
-- [ ] **Branches Synced:** `bd-land` completed successfully
+- [ ] **Run `bd-preflight`** → Should show all ✅
 
-## Branch Alignment
+If ❌ appears:
+- [ ] **Run `bd-land`** to sync branches
+- [ ] **Run `bd-preflight`** again to verify
 
-- [ ] **beads-sync Merged:** `beads-sync` changes merged into `main`
-- [ ] **main Merged:** `main` changes merged into working branch
-- [ ] **Remote Updated:** Remote branches reflect local state
+## Push
 
-## Verification
+- [ ] **Run `git push`** when preflight shows ✅
 
-- [ ] **Sync Status Clean:** `bd sync --status` shows no issues
-- [ ] **No Divergence:** `git log --oneline --graph --all -5` shows aligned branches
+## Optional: Next Session Prep
 
-## Next Session Prep
-
-- [ ] **Ready Work Identified:** `bd-status` or `bd-next` shows available work
-- [ ] **Blockers Documented:** Any blockers recorded in Beads (`bd-blocker`)
+- [ ] **Ready Work Identified:** `bd-status` shows available work
+- [ ] **Blockers Documented:** Any blockers recorded (`bd-blocker`)
 
 ---
 
 ## Handover Summary
 
 ```
-Handover: {{PASS/FAIL}}
-
-Claims Released: {{yes/no}}
-Changes Committed: {{yes/no}}
-Branches Synced: {{yes/no}}
-Remote Updated: {{yes/no}}
+bd-preflight: {{✅ Ready / ❌ Not Ready}}
+git push: {{done / skipped}}
 
 Next Ready Work:
-{{bd-next output}}
+{{bd-status output}}
 ```
 
-**If FAIL:** Address failures before ending session or document reason for incomplete handover.
+**If not ready:** Run `bd-fix` or `bd-land` and try again.
 
-**If PASS:** Session can safely end. All work is synced and ready for next session.
+**If ready:** Session can safely end.

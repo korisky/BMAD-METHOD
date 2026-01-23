@@ -1,20 +1,52 @@
 #!/usr/bin/env sh
 
-# Auto-fix changed files and stage them
+# BMAD Pre-Commit Hook - Tiered Validation
+# =========================================
+# Modes:
+#   BMAD_QUICK=1  - Quick mode: lint-staged only (for iteration)
+#   HUSKY=0       - Skip all hooks (emergency bypass)
+#   (default)     - Full validation (for meaningful commits)
+#
+# Usage:
+#   BMAD_QUICK=1 git commit -m "wip: iteration"  # Fast
+#   git commit -m "feat: complete feature"       # Full validation
+#   git commit -m "..." -n                       # Emergency bypass
+#
+# In human-agent mixed workflows, use BMAD_QUICK=1 for quick iterations
+# and run full validation before PR/push.
+
+# =====================
+# TIER 1: ALWAYS RUN
+# =====================
+# Auto-fix changed files and stage them (fast, staged files only)
 npx --no-install lint-staged
 
-# Validate everything
+# Beads sync (if available) - lightweight, non-blocking
+if [ -d ".beads" ] && command -v bd >/dev/null 2>&1; then
+  bd sync 2>/dev/null || true
+fi
+
+# =====================
+# TIER 2: FULL MODE (skip if BMAD_QUICK=1)
+# =====================
+if [ "$BMAD_QUICK" = "1" ]; then
+  echo "⚡ BMAD Quick Mode: skipping full validation (lint-staged + beads only)"
+  echo "   Run 'npm test' before PR/push for full validation"
+  exit 0
+fi
+
+# Full validation
 npm test
 
 # Validate docs links only when docs change
 if command -v rg >/dev/null 2>&1; then
   if git diff --cached --name-only | rg -q '^docs/'; then
     npm run docs:validate-links
-		npm run docs:build
+    npm run docs:build
   fi
 else
   if git diff --cached --name-only | grep -Eq '^docs/'; then
     npm run docs:validate-links
-		npm run docs:build
+    npm run docs:build
   fi
 fi

@@ -32,38 +32,47 @@ fi
 
 # 3. Install git pre-commit hook for beads auto-sync
 echo ""
-echo "Installing git pre-commit hook for beads auto-sync..."
+echo "Checking git hooks setup..."
 if [ -d ".git" ]; then
-    HOOK_FILE=".git/hooks/pre-commit"
-
-    # Check if hook already has beads sync
-    if [ -f "$HOOK_FILE" ] && grep -q "bd sync" "$HOOK_FILE" 2>/dev/null; then
-        echo "  Pre-commit hook already configured"
-    elif [ -f "$HOOK_FILE" ]; then
-        echo "  Existing pre-commit hook found, appending beads sync..."
-        cat >> "$HOOK_FILE" << 'EOF'
+    # Check if Husky is managing hooks (preferred)
+    if [ -d ".husky" ] && grep -q "bd sync" ".husky/pre-commit" 2>/dev/null; then
+        echo "  ✅ Husky pre-commit hook already has beads sync"
+        echo "  (Husky manages git hooks for this project)"
+    elif [ -d ".husky" ]; then
+        echo "  ⚠️  Husky detected but pre-commit doesn't have beads sync"
+        echo "  Add this to .husky/pre-commit:"
+        echo "    if [ -d \".beads\" ] && command -v bd >/dev/null 2>&1; then"
+        echo "      bd sync 2>/dev/null || true"
+        echo "    fi"
+    else
+        # No Husky - install to .git/hooks/
+        HOOK_FILE=".git/hooks/pre-commit"
+        if [ -f "$HOOK_FILE" ] && grep -q "bd sync" "$HOOK_FILE" 2>/dev/null; then
+            echo "  ✅ Pre-commit hook already configured"
+        elif [ -f "$HOOK_FILE" ]; then
+            echo "  Existing pre-commit hook found, appending beads sync..."
+            cat >> "$HOOK_FILE" << 'EOF'
 
 # BMAD + Beads auto-sync (added by beads installer)
 if [ -d ".beads" ] && command -v bd &> /dev/null; then
-    echo "Syncing beads..."
-    bd sync || echo "⚠️  Beads sync failed - run 'bd-land' later to sync"
+    bd sync 2>/dev/null || true
 fi
 EOF
-        echo "  ✅ Beads sync appended to existing hook"
-    else
-        cat > "$HOOK_FILE" << 'EOF'
+            echo "  ✅ Beads sync appended to existing hook"
+        else
+            cat > "$HOOK_FILE" << 'EOF'
 #!/bin/bash
 # BMAD + Beads auto-sync
 
 if [ -d ".beads" ] && command -v bd &> /dev/null; then
-    echo "Syncing beads..."
-    bd sync || echo "⚠️  Beads sync failed - run 'bd-land' later to sync"
+    bd sync 2>/dev/null || true
 fi
 
 exit 0
 EOF
-        chmod +x "$HOOK_FILE"
-        echo "  ✅ Pre-commit hook created"
+            chmod +x "$HOOK_FILE"
+            echo "  ✅ Pre-commit hook created"
+        fi
     fi
 else
     echo "  ⚠️  Not a git repository, skipping hook installation"
@@ -139,26 +148,26 @@ fi
 echo ""
 echo "=== Setup Complete ==="
 echo ""
-echo "✅ Beads integration installed with automatic git workflow"
+echo "✅ Beads integration installed"
 echo ""
 echo "📋 Simple Workflow (Human or Agent):"
-echo "  1. Work normally: code, test, etc."
-echo "  2. Commit: git add . && git commit -m '...' (beads auto-syncs)"
-echo "  3. End session: bd-land (syncs beads-sync → main → current branch)"
-echo "  4. Push: git push"
+echo "  1. Work & commit normally (hook auto-syncs beads)"
+echo "  2. Ready to push? Run: bd-preflight"
+echo "  3. If ❌: Run bd-land, then bd-preflight again"
+echo "  4. If ✅: git push"
 echo ""
 echo "🔧 Key Commands:"
+echo "  bd-preflight  - Check if ready to push"
+echo "  bd-land       - Sync branches (beads-sync → main → current)"
+echo "  bd-fix        - Auto-fix common issues"
 echo "  bd-status     - See ready work and blockers"
-echo "  bd-claim X    - Claim a story before starting"
-echo "  bd-land       - Sync branches (run before push)"
 echo "  bd-help       - Show all commands"
 echo ""
 echo "📚 Documentation:"
-echo "  docs/bmad-workflow-guide.md   - Strategic workflow guide (phases, ADRs, sprints)"
-echo "  docs/beads-git-workflow.md    - Git workflow guide (branching, sync, recovery)"
-echo "  ~/.bmad/                      - Quick reference copies"
+echo "  docs/bmad-workflow-guide.md   - Strategic workflow guide"
+echo "  docs/beads-git-workflow.md    - Git workflow & recovery"
 echo ""
 echo "⚡ Next Steps:"
 echo "  1. Restart terminal or run: source ~/.bmad/beads-aliases.sh"
-echo "  2. Run 'bd-status' to check current state"
+echo "  2. Run 'bd-help' to see all commands"
 echo ""
