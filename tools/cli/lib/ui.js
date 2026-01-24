@@ -188,14 +188,10 @@ class UI {
 
       // If Claude Code was selected, ask about TTS
       if (claudeCodeSelected) {
-        const { enableTts } = await inquirer.prompt([
-          {
-            type: 'confirm',
-            name: 'enableTts',
-            message: 'Claude Code supports TTS (Text-to-Speech). Would you like to enable it?',
-            default: false,
-          },
-        ]);
+        const enableTts = await prompts.confirm({
+          message: 'Claude Code supports TTS (Text-to-Speech). Would you like to enable it?',
+          default: false,
+        });
 
         if (enableTts) {
           agentVibesConfig = { enabled: true, alreadyInstalled: false };
@@ -330,15 +326,10 @@ class UI {
         let enableTts = false;
 
         if (hasClaudeCode) {
-          const { enableTts: enable } = await inquirer.prompt([
-            {
-              type: 'confirm',
-              name: 'enableTts',
-              message: 'Claude Code supports TTS (Text-to-Speech). Would you like to enable it?',
-              default: false,
-            },
-          ]);
-          enableTts = enable;
+          enableTts = await prompts.confirm({
+            message: 'Claude Code supports TTS (Text-to-Speech). Would you like to enable it?',
+            default: false,
+          });
         }
 
         // Beads integration - ask for all IDE selections
@@ -1206,7 +1197,7 @@ class UI {
    * @sideeffects None - pure user input collection, no files written
    * @edgecases Shows warning if user enables TTS but AgentVibes not detected
    * @calledby promptInstall() during installation flow, after core config, before IDE selection
-   * @calls checkAgentVibesInstalled(), inquirer.prompt(), chalk.green/yellow/dim()
+   * @calls checkAgentVibesInstalled(), prompts.confirm(), chalk.green/yellow/dim()
    *
    * AI NOTE: This prompt is strategically positioned in installation flow:
    * - AFTER core config (user_name, etc)
@@ -1237,7 +1228,6 @@ class UI {
    * - GitHub Issue: paulpreibisch/AgentVibes#36
    */
   async promptAgentVibes(projectDir) {
-    const inquirer = await getInquirer();
     CLIUtils.displaySection('🎤 Voice Features', 'Enable TTS for multi-agent conversations');
 
     // Check if AgentVibes is already installed
@@ -1249,23 +1239,19 @@ class UI {
       console.log(chalk.dim('  AgentVibes not detected'));
     }
 
-    const answers = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'enableTts',
-        message: 'Enable Agents to Speak Out loud (powered by Agent Vibes? Claude Code only currently)',
-        default: false, // Default to yes - recommended for best experience
-      },
-    ]);
+    const enableTts = await prompts.confirm({
+      message: 'Enable Agents to Speak Out loud (powered by Agent Vibes? Claude Code only currently)',
+      default: false, // Default to yes - recommended for best experience
+    });
 
-    if (answers.enableTts && !agentVibesInstalled) {
+    if (enableTts && !agentVibesInstalled) {
       console.log(chalk.yellow('\n  ⚠️  AgentVibes not installed'));
       console.log(chalk.dim('  Install AgentVibes separately to enable TTS:'));
       console.log(chalk.dim('  https://github.com/paulpreibisch/AgentVibes\n'));
     }
 
     return {
-      enabled: answers.enableTts,
+      enabled: enableTts,
       alreadyInstalled: agentVibesInstalled,
     };
   }
@@ -1359,8 +1345,6 @@ class UI {
    * @sideeffects None - pure user input collection
    */
   async promptBeadsIntegration(projectDir) {
-    const inquirer = await getInquirer();
-
     // Check if Beads CLI is available
     const beadsCli = await this.checkBeadsCliInstalled();
 
@@ -1387,14 +1371,10 @@ class UI {
       console.log(chalk.green('  ✓ Beads already initialized in project'));
     }
 
-    const { enableBeads } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'enableBeads',
-        message: 'Enable Beads integration for runtime coordination?',
-        default: beadsCli, // Default to yes if CLI is available
-      },
-    ]);
+    const enableBeads = await prompts.confirm({
+      message: 'Enable Beads integration for runtime coordination?',
+      default: beadsCli, // Default to yes if CLI is available
+    });
 
     if (enableBeads && !beadsCli) {
       console.log(chalk.yellow('\n  ⚠ Beads CLI not installed'));
