@@ -68,6 +68,24 @@ bd-release() {
   bd close "$id" --reason "Done"
 }
 
+# Mark work as done (syncs BMAD completion to Beads)
+# Usage: bd-done "1-2-user-auth" or bd-done "epic-2"
+bd-done() {
+  local key="$1"
+  if [ -z "$key" ]; then
+    echo "Usage: bd-done <story-key|epic-key>"
+    echo "  Marks work complete in Beads (syncs with BMAD status)"
+    return 1
+  fi
+  local id=$(bd q "Done: $key" --type task --priority 3 --silent 2>/dev/null)
+  if [ -z "$id" ]; then
+    echo "Failed to create done record"
+    return 1
+  fi
+  bd close "$id" --reason "Completed per BMAD workflow"
+  echo "Marked done: $key"
+}
+
 # ============================================
 # QUICK CREATE COMMANDS
 # ============================================

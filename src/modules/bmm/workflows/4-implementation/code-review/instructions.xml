@@ -197,6 +197,11 @@
         <action>Update development_status[{{story_key}}] = "done"</action>
         <action>Save file, preserving ALL comments and structure</action>
         <output>✅ Sprint status synced: {{story_key}} → done</output>
+
+        <!-- BEADS: Sync completion -->
+        <check if="bd command is available">
+          <action>Run `bd-done "{{story_key}}"`</action>
+        </check>
       </check>
 
       <check if="{{new_status}} == 'in-progress'">
