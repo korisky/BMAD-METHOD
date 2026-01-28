@@ -394,6 +394,11 @@
       <action>Update development_status[{{story_key}}] = "review"</action>
       <action>Save file, preserving ALL comments and structure including STATUS DEFINITIONS</action>
       <output>✅ Story status updated to "review" in sprint-status.yaml</output>
+
+      <!-- BEADS: Sync review status -->
+      <check if="bd command is available">
+        <action>Run `bd-action "Story {{story_key}} ready for code review"`</action>
+      </check>
     </check>
 
     <check if="{sprint_status} file does NOT exist OR {{current_sprint_status}} == 'no-sprint-tracking'">

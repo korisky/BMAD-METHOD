@@ -153,6 +153,18 @@ Alice (Product Owner): "Excellent! All {{done_stories}} stories are marked done.
 
 Bob (Scrum Master): "Perfect. Epic {{epic_number}} is complete and ready for retrospective, {user_name}."
 </output>
+
+  <!-- Check and sync epic status to Beads if needed -->
+  <action>Check development_status["epic-{{epic_number}}"] in {sprint_status_file}</action>
+  <check if="epic status is NOT 'done'">
+    <action>Update development_status["epic-{{epic_number}}"] = "done"</action>
+    <action>Save file, preserving ALL comments and structure</action>
+    <output>✅ Epic epic-{{epic_number}} marked as done in sprint-status.yaml</output>
+    <check if="bd command is available">
+      <action>Run `bd-done "epic-{{epic_number}}"`</action>
+      <output>✅ Epic synced to Beads</output>
+    </check>
+  </check>
 </check>
 
 </step>
@@ -1346,6 +1358,11 @@ Bob (Scrum Master): "See you all when prep work is done. Meeting adjourned!"
 Retrospective key: epic-{{epic_number}}-retrospective
 Status: {{previous_status}} → done
 </output>
+
+  <!-- BEADS: Sync retrospective completion -->
+  <check if="bd command is available">
+    <action>Run `bd-done "epic-{{epic_number}}-retrospective"`</action>
+  </check>
 </check>
 
 <check if="retrospective key not found">

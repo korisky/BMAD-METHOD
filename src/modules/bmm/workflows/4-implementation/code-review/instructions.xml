@@ -198,9 +198,23 @@
         <action>Save file, preserving ALL comments and structure</action>
         <output>✅ Sprint status synced: {{story_key}} → done</output>
 
-        <!-- BEADS: Sync completion -->
+        <!-- BEADS: Sync story completion -->
         <check if="bd command is available">
           <action>Run `bd-done "{{story_key}}"`</action>
+        </check>
+
+        <!-- Epic completion check -->
+        <action>Extract epic number from {{story_key}} (first segment before first dash, e.g., "1-2-user-auth" → epic_num=1)</action>
+        <action>Scan development_status for story keys with format "{{epic_num}}-{number}-*" (exactly: epic number, dash, story number, dash, slug)</action>
+        <action>Filter results: ONLY include keys that start with "{{epic_num}}-" AND contain at least 2 dashes (story format: {epic}-{story}-{slug})</action>
+        <action>Exclude any keys starting with "epic-" or ending with "-retrospective"</action>
+        <check if="at least one story found AND all matching story keys have status == 'done'">
+          <action>Update development_status["epic-{{epic_num}}"] = "done"</action>
+          <action>Save file, preserving ALL comments and structure</action>
+          <output>✅ Epic epic-{{epic_num}} marked as done (all stories completed)</output>
+          <check if="bd command is available">
+            <action>Run `bd-done "epic-{{epic_num}}"`</action>
+          </check>
         </check>
       </check>
 

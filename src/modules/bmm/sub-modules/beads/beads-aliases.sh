@@ -72,18 +72,18 @@ bd-release() {
 # Usage: bd-done "1-2-user-auth" or bd-done "epic-2"
 bd-done() {
   local key="$1"
-  if [ -z "$key" ]; then
-    echo "Usage: bd-done <story-key|epic-key>"
-    echo "  Marks work complete in Beads (syncs with BMAD status)"
-    return 1
-  fi
-  local id=$(bd q "Done: $key" --type task --priority 3 --silent 2>/dev/null)
-  if [ -z "$id" ]; then
-    echo "Failed to create done record"
-    return 1
-  fi
-  bd close "$id" --reason "Completed per BMAD workflow"
-  echo "Marked done: $key"
+  [ -z "$key" ] && echo "Usage: bd-done <story-key|epic-key>" && return 1
+
+  # Close all open tasks containing this key
+  bd search "$key" --status open --type task --format '{{.ID}}' --limit 0 2>/dev/null | \
+    while read -r id; do
+      [ -n "$id" ] && bd close "$id" --reason "Completed: $key" 2>/dev/null && echo "  Closed: $id"
+    done
+
+  # Create completion marker
+  local marker=$(bd q "Done: $key" --type task --priority 3 --silent 2>/dev/null)
+  [ -n "$marker" ] && bd close "$marker" --reason "Completed per BMAD workflow" 2>/dev/null
+  echo "✅ Marked done: $key"
 }
 
 # ============================================
