@@ -124,6 +124,9 @@ Parse these fields from YAML comments and metadata:
 
 **Tip:** For guardrail tests, run TEA `*automate` after `dev-story`. If you lose context, TEA workflows resume from artifacts in `{{output_folder}}`.
   </output>
+
+<!-- beads:workflow-status-beads -->
+
   </step>
 
 <step n="4" goal="Offer actions">

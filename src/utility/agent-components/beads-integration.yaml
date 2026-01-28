@@ -6,6 +6,10 @@
 injectable_critical_actions:
   # Add to ALL agents
   all_agents:
+    # Session lifecycle
+    - "START: Run `[WS]` for project state"
+    - "END: Run `[HO]` + state NEXT agent/action"
+
     # Session start
     - "Check status first: `bd-status` (shows ready work + blockers)"
     - "Check HALTs: `bd-halts` (priority 0 issues)"

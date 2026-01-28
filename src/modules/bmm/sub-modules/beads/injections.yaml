@@ -2,21 +2,23 @@
 # These get injected into BMAD agent files during installation
 
 injections:
+  # Inject Beads status into [WS] workflow
+  - file: "_bmad/bmm/workflows/workflow-status/instructions.md"
+    point: "workflow-status-beads"
+    requires: "beads-enabled"
+    content: |
+      <action>If Beads enabled, show runtime status after BMAD status:</action>
+      <output>
+      **Beads Runtime:** `bd-halts` | `bd ready --limit 3` | `bd-who`
+      </output>
+
   # Inject into ALL agents (bmad-master, pm, architect, sm, dev)
   - file: "_bmad/bmm/agents/dev.md"
     point: "beads-critical-actions"
     requires: "beads-enabled"
     content: |
       <!-- BEADS INTEGRATION -->
-      ## Beads Runtime Coordination
-
-      **When to Use Beads vs BMAD:**
-      - BMAD: Formal outputs (story status, ADRs, workflow progress)
-      - Beads: Runtime coordination (claims, blockers, decisions during work)
-
-      **Session Start:**
-      - `bd-status` → see ready work and blockers
-      - `bd-claim "{story-key}"` → before starting work
+      ## Session: START→`[WS]`→claim | END→`[HO]`→NEXT
 
       **During Work:**
       - Commit normally (hook auto-syncs beads)
@@ -38,14 +40,7 @@ injections:
     requires: "beads-enabled"
     content: |
       <!-- BEADS INTEGRATION -->
-      ## Beads Runtime Coordination
-
-      **When to Use Beads vs BMAD:**
-      - BMAD: Sprint status (sprint-status.yaml), story tracking
-      - Beads: Cross-story blockers, runtime decisions, action items
-
-      **Session Start:**
-      - `bd-status` → see blockers across stories
+      ## Session: START→`[WS]` | SCOPE CHANGE→`[CC]` | END→`[HO]`→NEXT
 
       **Sprint Management:**
       - `bd-blocker "Dep: Story {B} needs {A}"` → cross-story deps
