@@ -313,6 +313,7 @@ class Installer {
 
     try {
       const { execSync } = require('node:child_process');
+      const path = require('path');
 
       // Run the beads install script
       console.log(chalk.dim('  Running Beads setup...'));
@@ -322,6 +323,64 @@ class Installer {
       });
 
       console.log(chalk.green('  ✓ Beads setup complete'));
+
+      // Validate Beads installation in target project
+      console.log(chalk.dim('  Validating Beads setup...'));
+      let validationIssues = 0;
+
+      // Check 1: .beads directory exists
+      const beadsDir = path.join(projectDir, '.beads');
+      if (await fs.pathExists(beadsDir)) {
+        console.log(chalk.green('    ✓ .beads directory initialized'));
+      } else {
+        console.warn(chalk.yellow('    ⚠ .beads directory not found - bd init may not have completed'));
+        validationIssues++;
+      }
+
+      // Check 2: beads-sync branch exists
+      try {
+        execSync('git rev-parse --verify beads-sync', {
+          cwd: projectDir,
+          stdio: 'pipe',
+        });
+        console.log(chalk.green('    ✓ beads-sync branch created'));
+      } catch {
+        console.warn(chalk.yellow('    ⚠ beads-sync branch not found (daemon may need to create it)'));
+        // This is a soft warning - daemon creates branch on first use
+      }
+
+      // Check 3: Daemon status (optional check, don't fail on this)
+      try {
+        const daemonStatus = execSync('bd stats', {
+          cwd: projectDir,
+          stdio: 'pipe',
+          encoding: 'utf8',
+        });
+        if (daemonStatus.includes('running') || daemonStatus.includes('active')) {
+          console.log(chalk.green('    ✓ Beads daemon running'));
+        } else {
+          console.log(chalk.dim('    ℹ Daemon status: ' + daemonStatus.trim().split('\n')[0]));
+        }
+      } catch {
+        console.log(chalk.dim('    ℹ Daemon not running yet (will start automatically on first bd command)'));
+      }
+
+      // Check 4: Aliases installed
+      const aliasesFile = path.join(require('os').homedir(), '.bmad', 'beads-aliases.sh');
+      if (await fs.pathExists(aliasesFile)) {
+        console.log(chalk.green('    ✓ Shell aliases installed to ~/.bmad/beads-aliases.sh'));
+      } else {
+        console.warn(chalk.yellow('    ⚠ Shell aliases not found at ~/.bmad/beads-aliases.sh'));
+        validationIssues++;
+      }
+
+      // Summary
+      if (validationIssues === 0) {
+        console.log(chalk.green('  ✓ Beads integration validated successfully'));
+      } else {
+        console.warn(chalk.yellow(`  ⚠ Beads setup completed with ${validationIssues} warning(s) - review above`));
+        console.log(chalk.dim('    You can re-run setup manually if needed: bash ./_bmad/bmm/sub-modules/beads/install.sh'));
+      }
     } catch (error) {
       console.warn(chalk.yellow(`  Warning: Beads setup encountered an issue: ${error.message}`));
       console.log(chalk.dim('  You can run the setup manually later: bash ./_bmad/bmm/sub-modules/beads/install.sh'));

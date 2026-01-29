@@ -281,6 +281,105 @@ bd-land() {
 # PRE-PUSH CHECK
 # ============================================
 
+# Health diagnostic - check project + beads status
+bd-health() {
+  echo "=== BEADS HEALTH CHECK ==="
+  local issues=0
+
+  # 1. Check if in git repo
+  if ! git rev-parse --git-dir > /dev/null 2>&1; then
+    echo "❌ Not a git repository"
+    return 1
+  fi
+
+  # 2. Check if beads initialized
+  if [ ! -d ".beads" ]; then
+    echo "⚠️  Beads not initialized in this project"
+    echo "   Run: bd init"
+    return 1
+  fi
+
+  # 3. Check daemon status
+  echo ""
+  echo "Daemon Status:"
+  if command -v bd >/dev/null 2>&1; then
+    if bd stats 2>/dev/null; then
+      echo "  ✅ Daemon running"
+    else
+      echo "  ⚠️  Daemon not running or not responding"
+      echo "     Run: bd daemon start"
+      ((issues++))
+    fi
+  else
+    echo "  ❌ bd CLI not found"
+    return 1
+  fi
+
+  # 4. Check branch divergence (if beads-sync exists)
+  echo ""
+  echo "Branch Sync Status:"
+  if git rev-parse --verify beads-sync >/dev/null 2>&1; then
+    local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+    default_branch=${default_branch:-main}
+
+    local ahead=$(git rev-list --count ${default_branch}..beads-sync 2>/dev/null || echo 0)
+    local behind=$(git rev-list --count beads-sync..${default_branch} 2>/dev/null || echo 0)
+
+    if [ "$ahead" -gt 0 ]; then
+      echo "  ⚠️  beads-sync is $ahead commit(s) ahead of $default_branch"
+      echo "     Run: bd-land (to sync branches)"
+      ((issues++))
+    elif [ "$behind" -gt 0 ]; then
+      echo "  ⚠️  beads-sync is $behind commit(s) behind $default_branch"
+      echo "     (This is unusual - beads-sync should be auto-updated)"
+      ((issues++))
+    else
+      echo "  ✅ Branches in sync"
+    fi
+  else
+    echo "  ⚠️  beads-sync branch not found"
+    echo "     (Normal if daemon hasn't created it yet)"
+  fi
+
+  # 5. Check active claims
+  echo ""
+  echo "Active Work Claims:"
+  if command -v bd >/dev/null 2>&1; then
+    local claims=$(bd list --type task --status in_progress 2>/dev/null | grep -v "^$")
+    if [ -n "$claims" ]; then
+      echo "$claims"
+      echo "  ℹ️  Remember to release claims when done: bd-release <id>"
+    else
+      echo "  ✅ No active claims"
+    fi
+  fi
+
+  # 6. Check for open HALTs
+  echo ""
+  echo "Critical Issues (HALTs):"
+  if command -v bd >/dev/null 2>&1; then
+    local halts=$(bd list --type blocker --priority 0 --status open 2>/dev/null | grep -v "^$")
+    if [ -n "$halts" ]; then
+      echo "$halts"
+      echo "  ⚠️  HALTs must be resolved before proceeding"
+      ((issues++))
+    else
+      echo "  ✅ No HALTs"
+    fi
+  fi
+
+  # Summary
+  echo ""
+  echo "==========================="
+  if [ "$issues" -eq 0 ]; then
+    echo "✅ System healthy"
+    return 0
+  else
+    echo "⚠️  Found $issues issue(s) - review above"
+    return 1
+  fi
+}
+
 # Check if ready to push (for humans and agents)
 bd-preflight() {
   echo "=== Pre-Push Checklist ==="
@@ -384,6 +483,7 @@ bd-help() {
   echo ""
   echo "🔧 CORE COMMANDS:"
   echo "  bd-preflight     - Check if ready to push (run this!)"
+  echo "  bd-health        - Comprehensive health check (daemon, branches, claims)"
   echo "  bd-land          - Sync branches (beads-sync → main → current)"
   echo "  bd-fix           - Auto-fix common issues"
   echo ""
