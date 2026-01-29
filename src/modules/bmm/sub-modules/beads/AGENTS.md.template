@@ -97,6 +97,7 @@ bd-status              # Report next ready work
 | `bd-blocker X` | Create blocker |
 | `bd-action X` | Create action item |
 | `bd-who` | See who's working on what |
+| `bd-config-sync` | Configure auto-sync mode |
 | `bd-help` | Show all commands |
 
 ---
@@ -129,6 +130,8 @@ These belong in BMAD files:
 - Run `bd-claim` before starting any story work
 - Focus on implementation quality following `project-context.md`
 - Run `[HO]` handover before ending session
+- Auto-sync: post-commit hooks keep branches synced automatically
+- Configure sync mode: `bd-config-sync <mode>` (warning/block/auto/off)
 
 ### Scrum Master (SM)
 - Track cross-story dependencies via `bd-blocker "Dep: Story B needs A"`
@@ -164,6 +167,11 @@ These belong in BMAD files:
 **"Can't checkout to main"**
 → Another worktree has `main` checked out
 → Run: `git -C .git/beads-worktrees/beads-sync checkout beads-sync`
+
+**"Auto-sync not working?"**
+→ Check background sync log: `tail ~/.bmad/sync.log`
+→ Verify daemon running: `bd stats`
+→ Check config mode: `bd-config-sync`
 
 ---
 

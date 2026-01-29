@@ -33,7 +33,17 @@ git add <files>
 git commit -m "type: description"
 ```
 
-### Step 3: Check If Ready to Push
+### Step 3: Sync All Branches
+
+Always sync branches during handover to prevent divergence:
+
+```bash
+bd-land        # Sync: beads-sync → main → current branch
+```
+
+This ensures all branches stay in sync even if no divergence warning appeared.
+
+### Step 4: Verify Ready to Push
 
 ```bash
 bd-preflight
@@ -43,15 +53,6 @@ This checks:
 - ✅ Working tree clean
 - ✅ Branches synced (beads-sync → main)
 - ✅ No open claims
-
-### Step 4: If Not Ready, Sync Branches
-
-If `bd-preflight` shows ❌:
-
-```bash
-bd-land        # Sync: beads-sync → main → current branch
-bd-preflight   # Verify again
-```
 
 ### Step 5: Push When Ready
 
@@ -80,13 +81,13 @@ bd-release <claim-id>
 # 2. Commit changes
 git add . && git commit -m "wip: session checkpoint"
 
-# 3. Check if ready
+# 3. Sync branches (always run)
+bd-land
+
+# 4. Verify ready
 bd-preflight
 
-# 4. If ❌: sync branches
-bd-land && bd-preflight
-
-# 5. If ✅: push
+# 5. Push
 git push
 ```
 
@@ -105,6 +106,11 @@ bd-fix
 This handles common issues like:
 - Worktree on wrong branch
 - Branch sync needed
+
+**Note:** With auto-sync enabled (default), branches should stay in sync automatically:
+- Post-commit hook: Background sync after commits
+- Pre-push hook: Prompts to sync before push
+- Configure with: `bd-config-sync <mode>` (warning/block/auto/off)
 
 **If bd-fix doesn't work, manual recovery:**
 

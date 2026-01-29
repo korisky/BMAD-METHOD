@@ -278,6 +278,130 @@ bd-land() {
 }
 
 # ============================================
+# OPTIONAL AUTOMATION
+# ============================================
+
+# Configure auto-sync behavior
+# Usage: bd-config-sync <mode>
+# Modes: warning (default), block, auto, off
+bd-config-sync() {
+  local mode="$1"
+  if [ -z "$mode" ]; then
+    local current=$(git config beads.auto-sync 2>/dev/null || echo "warning")
+    echo "Current auto-sync mode: $current"
+    echo ""
+    echo "Usage: bd-config-sync <mode>"
+    echo ""
+    echo "Available modes:"
+    echo "  warning  - Ask before syncing (default)"
+    echo "  block    - Refuse push until synced"
+    echo "  auto     - Auto-sync without asking"
+    echo "  off      - Disable auto-sync checks"
+    return 0
+  fi
+
+  case "$mode" in
+    warning|block|auto|off)
+      git config beads.auto-sync "$mode"
+      echo "✅ Auto-sync mode set to: $mode"
+      ;;
+    *)
+      echo "❌ Invalid mode: $mode"
+      echo "   Valid modes: warning, block, auto, off"
+      return 1
+      ;;
+  esac
+}
+
+# Smart pre-push sync with config support
+# Returns 0 if safe to push, 1 if blocked
+bd-auto-land() {
+  # Check if beads-sync exists
+  if ! git rev-parse --verify beads-sync >/dev/null 2>&1; then
+    return 0  # No beads-sync = no sync needed
+  fi
+
+  # Detect default branch
+  local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+  default_branch=${default_branch:-main}
+
+  # Check divergence
+  local ahead=$(git rev-list --count ${default_branch}..beads-sync 2>/dev/null || echo 0)
+
+  if [ "$ahead" -eq 0 ]; then
+    return 0  # Already synced
+  fi
+
+  # Get config mode
+  local mode=$(git config beads.auto-sync 2>/dev/null || echo "warning")
+
+  case "$mode" in
+    off)
+      # Skip check entirely
+      return 0
+      ;;
+    auto)
+      # Auto-sync without asking
+      echo "🔄 Auto-syncing branches (beads-sync is $ahead commits ahead)..."
+      bd-land
+      return $?
+      ;;
+    block)
+      # Refuse push until synced
+      echo "❌ Push blocked: beads-sync is $ahead commits ahead of $default_branch"
+      echo "   Run: bd-land"
+      echo "   Or change mode: bd-config-sync warning"
+      return 1
+      ;;
+    warning|*)
+      # Ask before syncing (default)
+      echo "⚠️  beads-sync is $ahead commit(s) ahead of $default_branch"
+      echo ""
+      read -p "Run bd-land to sync branches? [y/N] " -n 1 -r
+      echo ""
+      if [[ $REPLY =~ ^[Yy]$ ]]; then
+        bd-land
+        return $?
+      else
+        echo "Push cancelled. Run 'bd-land' manually when ready."
+        return 1
+      fi
+      ;;
+  esac
+}
+
+# Silent background sync wrapper (for post-commit hook)
+# Logs to ~/.bmad/sync.log for debugging
+bd-auto-sync() {
+  local log_file="$HOME/.bmad/sync.log"
+  mkdir -p "$(dirname "$log_file")"
+
+  {
+    echo "=== $(date '+%Y-%m-%d %H:%M:%S') ==="
+
+    # Only sync if beads-sync exists
+    if ! git rev-parse --verify beads-sync >/dev/null 2>&1; then
+      echo "Skip: beads-sync branch not found"
+      return 0
+    fi
+
+    # Check divergence
+    local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+    default_branch=${default_branch:-main}
+    local ahead=$(git rev-list --count ${default_branch}..beads-sync 2>/dev/null || echo 0)
+
+    if [ "$ahead" -eq 0 ]; then
+      echo "Skip: branches already synced"
+      return 0
+    fi
+
+    echo "Syncing: beads-sync is $ahead commits ahead"
+    bd-land 2>&1
+    echo "Complete: $(date '+%Y-%m-%d %H:%M:%S')"
+  } >> "$log_file" 2>&1
+}
+
+# ============================================
 # PRE-PUSH CHECK
 # ============================================
 
@@ -486,6 +610,11 @@ bd-help() {
   echo "  bd-health        - Comprehensive health check (daemon, branches, claims)"
   echo "  bd-land          - Sync branches (beads-sync → main → current)"
   echo "  bd-fix           - Auto-fix common issues"
+  echo ""
+  echo "⚙️  AUTO-SYNC CONFIG:"
+  echo "  bd-config-sync <mode>  - Configure auto-sync behavior"
+  echo "    Modes: warning (ask), block (refuse), auto (always), off (disable)"
+  echo "  Current: $(git config beads.auto-sync 2>/dev/null || echo 'warning')"
   echo ""
   echo "⚡ QUICK COMMITS (human-agent mixed workflow):"
   echo "  bd-quick <msg>   - Commit with lint-staged only (skip tests)"

@@ -98,6 +98,158 @@ bd ready --limit 3
 
 ---
 
+## Auto-Sync Features
+
+### Overview
+
+The BMAD + Beads integration provides three levels of automatic synchronization to prevent branch divergence:
+
+1. **Post-commit sync** - Background sync after commits (Phase 3)
+2. **Pre-push check** - Interactive sync before push (Phase 2)
+3. **Handover sync** - Mandatory sync during session end (Phase 3)
+
+### Post-Commit Background Sync
+
+After each commit, a background hook runs `bd-auto-sync` to check for divergence:
+
+```bash
+# Runs automatically after: git commit
+# Non-blocking, runs in background
+# Logs to: ~/.bmad/sync.log
+```
+
+**How it works:**
+- Only syncs if beads-sync is ahead of main
+- Runs silently in background (no output during commit)
+- Logs all activity to `~/.bmad/sync.log` for debugging
+
+**Check sync logs:**
+```bash
+tail -f ~/.bmad/sync.log
+```
+
+### Pre-Push Interactive Check
+
+Before pushing, the pre-push hook runs `bd-auto-land` to check divergence:
+
+```bash
+# Runs automatically before: git push
+# Behavior controlled by git config beads.auto-sync
+```
+
+**Configure behavior:**
+```bash
+bd-config-sync <mode>
+```
+
+**Available modes:**
+
+| Mode | Behavior |
+|------|----------|
+| `warning` (default) | Ask before syncing: "Run bd-land? [y/N]" |
+| `block` | Refuse push until branches synced |
+| `auto` | Auto-sync without asking |
+| `off` | Disable pre-push check |
+
+**Examples:**
+```bash
+# Ask before syncing (default)
+bd-config-sync warning
+
+# Auto-sync always
+bd-config-sync auto
+
+# Block pushes if not synced
+bd-config-sync block
+
+# Disable auto-sync
+bd-config-sync off
+
+# Check current mode
+bd-config-sync
+```
+
+### Handover Mandatory Sync
+
+During `[HO]` handover workflow, `bd-land` always executes (not conditional):
+
+```bash
+# 3. Sync branches (always run)
+bd-land
+
+# 4. Verify ready
+bd-preflight
+
+# 5. Push
+git push
+```
+
+This ensures session-end syncs happen even if no divergence warning appeared.
+
+### When to Use Each Mode
+
+**`warning` mode (recommended):**
+- Default safe mode
+- Good for learning the workflow
+- Gives you control while preventing accidents
+
+**`auto` mode:**
+- Best for experienced users
+- Seamless workflow, no prompts
+- Trust background sync to keep branches aligned
+
+**`block` mode:**
+- Enforces strict sync discipline
+- Good for teams requiring always-synced branches
+- Prevents any push until synced
+
+**`off` mode:**
+- Only for solo work without daemon
+- Or when beads-sync doesn't exist
+- Not recommended for team projects
+
+### Troubleshooting Auto-Sync
+
+**Background sync not working?**
+
+Check the log:
+```bash
+tail -20 ~/.bmad/sync.log
+```
+
+Common issues:
+- Daemon not running → `bd daemon start`
+- beads-sync doesn't exist → normal if daemon just started
+- Merge conflict → run `bd-land` manually to resolve
+
+**Pre-push check failing?**
+
+Run health check:
+```bash
+bd-health
+```
+
+Fix issues:
+```bash
+bd-fix          # Auto-fix common issues
+bd-land         # Manual sync if needed
+bd-preflight    # Verify ready
+```
+
+**Disable auto-sync temporarily:**
+
+For one-off push without check:
+```bash
+git push --no-verify
+```
+
+Or disable permanently:
+```bash
+bd-config-sync off
+```
+
+---
+
 ## Implementation Guide
 
 ### For New Projects
