@@ -26,6 +26,32 @@ alias bd-halts='bd list --type blocker --priority 0 --status open'
 alias bd-who='bd list --type task --status in_progress'
 
 # ============================================
+# INTERNAL HELPER FUNCTIONS
+# ============================================
+
+# Get the default branch (main/master)
+# Used by: bd-land, bd-auto-land, bd-auto-sync, bd-health
+_bmad_default_branch() {
+  git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main"
+}
+
+# Check divergence between branches
+# Args: from_branch to_branch
+# Returns: number of commits ahead
+_bmad_check_divergence() {
+  local from_branch="${1:-main}"
+  local to_branch="${2:-beads-sync}"
+  git rev-list --count "$from_branch..$to_branch" 2>/dev/null || echo 0
+}
+
+# Check if a branch exists
+# Args: branch_name
+# Returns: 0 if exists, 1 if not
+_bmad_branch_exists() {
+  git rev-parse --verify "$1" >/dev/null 2>&1
+}
+
+# ============================================
 # WORK CLAIMING
 # ============================================
 
@@ -204,8 +230,7 @@ bd-land() {
   local current_branch=$(git branch --show-current)
 
   # Detect default branch (main or master)
-  local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
-  default_branch=${default_branch:-main}
+  local default_branch=$(_bmad_default_branch)
 
   # 1. Check open claims
   echo "1. Checking for open claims..."
@@ -243,7 +268,7 @@ bd-land() {
   git fetch origin 2>/dev/null || true
 
   # Check if beads-sync exists
-  if ! git rev-parse --verify beads-sync >/dev/null 2>&1; then
+  if ! _bmad_branch_exists beads-sync; then
     echo "⚠️  beads-sync branch not found. Skipping branch sync."
     echo "  (This is normal if beads daemon isn't running)"
     return 0
@@ -252,10 +277,18 @@ bd-land() {
   # Sync to default branch (main/master)
   git checkout "$default_branch" || { echo "❌ Can't checkout $default_branch"; return 1; }
 
-  if git merge beads-sync --no-ff -m "merge: sync beads tracking" 2>/dev/null; then
+  if git merge beads-sync --ff-only 2>&1; then
     echo "  ✅ $default_branch synced with beads-sync"
   else
-    echo "  ℹ️  $default_branch already up to date"
+    # Check if up-to-date or actual error (divergence)
+    if git merge-base --is-ancestor beads-sync "$default_branch" 2>/dev/null; then
+      echo "  ℹ️  $default_branch already up to date"
+    else
+      echo "  ❌ Cannot fast-forward. Branches diverged."
+      echo "     Diagnosis: git log $default_branch..beads-sync"
+      echo "     Recovery: bd-fix divergence"
+      return 1
+    fi
   fi
 
   git push origin "$default_branch" 2>/dev/null || echo "  ⚠️  Can't push to origin/$default_branch (maybe protected?)"
@@ -267,7 +300,15 @@ bd-land() {
     if git merge "$default_branch" --no-ff -m "merge: sync from $default_branch" 2>/dev/null; then
       echo "  ✅ $current_branch synced with $default_branch"
     else
-      echo "  ℹ️  $current_branch already up to date"
+      # Check if up-to-date or actual error
+      if git merge-base --is-ancestor "$default_branch" "$current_branch" 2>/dev/null; then
+        echo "  ℹ️  $current_branch already up to date"
+      else
+        echo "  ⚠️  Cannot merge $default_branch into $current_branch"
+        echo "     This may indicate merge conflicts or divergence"
+        echo "     Recovery: bd-fix divergence"
+        return 1
+      fi
     fi
 
     git push origin "$current_branch" 2>/dev/null || echo "  ⚠️  Can't push to origin/$current_branch"
@@ -317,16 +358,15 @@ bd-config-sync() {
 # Returns 0 if safe to push, 1 if blocked
 bd-auto-land() {
   # Check if beads-sync exists
-  if ! git rev-parse --verify beads-sync >/dev/null 2>&1; then
+  if ! _bmad_branch_exists beads-sync; then
     return 0  # No beads-sync = no sync needed
   fi
 
   # Detect default branch
-  local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
-  default_branch=${default_branch:-main}
+  local default_branch=$(_bmad_default_branch)
 
   # Check divergence
-  local ahead=$(git rev-list --count ${default_branch}..beads-sync 2>/dev/null || echo 0)
+  local ahead=$(_bmad_check_divergence "$default_branch" beads-sync)
 
   if [ "$ahead" -eq 0 ]; then
     return 0  # Already synced
@@ -374,21 +414,37 @@ bd-auto-land() {
 # Logs to ~/.bmad/sync.log for debugging
 bd-auto-sync() {
   local log_file="$HOME/.bmad/sync.log"
+  local pid_file="$HOME/.bmad/.sync.pid"
   mkdir -p "$(dirname "$log_file")"
+
+  # Check if another sync is running (inspired by bd-claim pattern)
+  if [ -f "$pid_file" ]; then
+    local existing_pid=$(cat "$pid_file" 2>/dev/null)
+    if [ -n "$existing_pid" ] && ps -p "$existing_pid" > /dev/null 2>&1; then
+      {
+        echo "=== $(date '+%Y-%m-%d %H:%M:%S') ==="
+        echo "Skip: sync already running (PID: $existing_pid)"
+      } >> "$log_file" 2>&1
+      return 0
+    fi
+  fi
+
+  # Create PID file
+  echo $$ > "$pid_file"
+  trap "rm -f '$pid_file'" EXIT INT TERM
 
   {
     echo "=== $(date '+%Y-%m-%d %H:%M:%S') ==="
 
     # Only sync if beads-sync exists
-    if ! git rev-parse --verify beads-sync >/dev/null 2>&1; then
+    if ! _bmad_branch_exists beads-sync; then
       echo "Skip: beads-sync branch not found"
       return 0
     fi
 
     # Check divergence
-    local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
-    default_branch=${default_branch:-main}
-    local ahead=$(git rev-list --count ${default_branch}..beads-sync 2>/dev/null || echo 0)
+    local default_branch=$(_bmad_default_branch)
+    local ahead=$(_bmad_check_divergence "$default_branch" beads-sync)
 
     if [ "$ahead" -eq 0 ]; then
       echo "Skip: branches already synced"
@@ -399,6 +455,12 @@ bd-auto-sync() {
     bd-land 2>&1
     echo "Complete: $(date '+%Y-%m-%d %H:%M:%S')"
   } >> "$log_file" 2>&1
+
+  # Rotate log if too large (keep last 1000 lines)
+  if [ -f "$log_file" ] && [ $(wc -l < "$log_file") -gt 1500 ]; then
+    tail -1000 "$log_file" > "${log_file}.tmp"
+    mv "${log_file}.tmp" "$log_file"
+  fi
 }
 
 # ============================================
@@ -442,12 +504,11 @@ bd-health() {
   # 4. Check branch divergence (if beads-sync exists)
   echo ""
   echo "Branch Sync Status:"
-  if git rev-parse --verify beads-sync >/dev/null 2>&1; then
-    local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
-    default_branch=${default_branch:-main}
+  if _bmad_branch_exists beads-sync; then
+    local default_branch=$(_bmad_default_branch)
 
-    local ahead=$(git rev-list --count ${default_branch}..beads-sync 2>/dev/null || echo 0)
-    local behind=$(git rev-list --count beads-sync..${default_branch} 2>/dev/null || echo 0)
+    local ahead=$(_bmad_check_divergence "$default_branch" beads-sync)
+    local behind=$(_bmad_check_divergence beads-sync "$default_branch")
 
     if [ "$ahead" -gt 0 ]; then
       echo "  ⚠️  beads-sync is $ahead commit(s) ahead of $default_branch"
@@ -518,11 +579,12 @@ bd-preflight() {
   fi
 
   # 2. Branch sync status (only if beads-sync exists)
-  if git rev-parse --verify beads-sync >/dev/null 2>&1; then
+  if _bmad_branch_exists beads-sync; then
     git fetch origin 2>/dev/null || true
-    local behind=$(git rev-list --count main..beads-sync 2>/dev/null || echo 0)
+    local default_branch=$(_bmad_default_branch)
+    local behind=$(_bmad_check_divergence "$default_branch" beads-sync)
     if [ "$behind" -gt 0 ]; then
-      echo "❌ beads-sync has $behind commits not in main (run bd-land)"
+      echo "❌ beads-sync has $behind commits not in $default_branch (run bd-land)"
       ok=false
     else
       echo "✅ Branches synced"
@@ -610,6 +672,18 @@ bd-help() {
   echo "  bd-health        - Comprehensive health check (daemon, branches, claims)"
   echo "  bd-land          - Sync branches (beads-sync → main → current)"
   echo "  bd-fix           - Auto-fix common issues"
+  echo ""
+  echo "🩹 TROUBLESHOOTING / RECOVERY:"
+  echo "  When bd-land fails with '❌ Cannot fast-forward. Branches diverged':"
+  echo "    1. bd-health           → Diagnose divergence (see commit counts)"
+  echo "    2. bd-fix divergence   → Auto-recovery (recommended)"
+  echo "    3. Manual recovery     → See docs/beads-git-workflow.md"
+  echo ""
+  echo "  Common recovery commands:"
+  echo "    bd-health              → Check branch sync status"
+  echo "    bd-fix                 → Auto-fix common issues"
+  echo "    git log main..beads-sync       → See what's ahead"
+  echo "    git merge beads-sync --no-ff  → Manual merge (if auto-fix fails)"
   echo ""
   echo "⚙️  AUTO-SYNC CONFIG:"
   echo "  bd-config-sync <mode>  - Configure auto-sync behavior"

@@ -1,7 +1,7 @@
 # Beads Git Workflow Guide
 
 > **For BMAD + Beads integrated projects**
-> Last Updated: 2026-01-17
+> Last Updated: 2026-01-30
 
 ## Overview
 
@@ -93,8 +93,9 @@ bd ready --limit 3
 3. **Fast-forward only (`--ff-only`)**: Prevents merge commits if branches diverged (alerts you early)
 4. **Regular syncing**: Prevents branches from diverging in the first place
 
-> **Note:** The `bd-land` command uses `--no-ff` for convenience (always creates a merge commit).
-> Use `--ff-only` manually when you want early divergence detection—it will fail if branches have diverged, alerting you to investigate before proceeding.
+> **Note (v0.0.2+):** The `bd-land` command now uses `--ff-only` for the critical `beads-sync → main` merge.
+> This provides early divergence detection—it will fail if branches have diverged, alerting you to investigate before proceeding.
+> See "When bd-land Fails" section below for recovery procedures.
 
 ---
 
@@ -247,6 +248,219 @@ Or disable permanently:
 ```bash
 bd-config-sync off
 ```
+
+---
+
+## When bd-land Fails: Branch Divergence Handling
+
+### Understanding --ff-only Safety Check
+
+**Starting from version 0.0.2**, `bd-land` uses `--ff-only` for the critical `beads-sync → main` merge:
+
+```bash
+git merge beads-sync --ff-only  # Safety check: fails if diverged
+```
+
+**Why --ff-only?**
+- ✅ **Fails fast**: Alerts you immediately if branches have diverged
+- ✅ **Prevents silent merges**: Won't hide conflicts or divergence
+- ✅ **Production pattern**: Matches crypto-data-extend-system safety approach
+- ✅ **Forces investigation**: Makes you understand what diverged before proceeding
+
+**Old behavior (--no-ff):**
+- ❌ Always created merge commits, even when unnecessary
+- ❌ Silently merged diverged branches (could hide problems)
+- ❌ No early warning of branch divergence
+
+### When bd-land Fails
+
+**Typical error message:**
+
+```bash
+$ bd-land
+=== LANDING THE PLANE ===
+
+1. Checking for open claims...
+  ✅ No open claims
+
+2. Syncing branches (beads-sync → main → your-branch)...
+
+  ❌ Cannot fast-forward. Branches diverged.
+     Diagnosis: git log main..beads-sync
+     Recovery: bd-fix divergence
+```
+
+**What this means:**
+- `main` and `beads-sync` have diverged (both have unique commits)
+- Fast-forward merge is impossible
+- **This is a safety check**, not an error!
+
+### Step-by-Step Recovery
+
+#### 1. Diagnose the Divergence
+
+Run health check to see the full picture:
+
+```bash
+bd-health
+```
+
+**Example output:**
+
+```
+=== BEADS HEALTH CHECK ===
+✅ Git repository
+✅ Beads initialized
+✅ bd CLI available
+
+Branch Sync Status:
+  ⚠️  beads-sync is 3 commit(s) ahead of main
+     Run: bd-land (to sync branches)
+```
+
+Or check manually:
+
+```bash
+# What commits are in beads-sync but not in main?
+git log main..beads-sync
+
+# What commits are in main but not in beads-sync?
+git log beads-sync..main
+```
+
+#### 2. Automatic Recovery (Recommended)
+
+Use the built-in fix command:
+
+```bash
+bd-fix divergence
+```
+
+This runs diagnostics and provides specific recovery guidance.
+
+#### 3. Manual Recovery (Production Pattern)
+
+If automatic recovery doesn't apply, use the production pattern from `crypto-data-extend-system`:
+
+```bash
+# 1. Checkout main
+git checkout main
+
+# 2. Merge with --no-ff (allow merge commit for diverged branches)
+git merge beads-sync --no-ff -m "manual merge: sync beads tracking after divergence"
+
+# 3. Resolve conflicts if any
+#    For .beads/issues.jsonl conflicts: ALWAYS prefer beads-sync version
+git checkout --theirs .beads/issues.jsonl  # Accept beads-sync version
+git add .beads/issues.jsonl
+git commit
+
+# 4. Push to remote
+git push origin main
+
+# 5. Sync to current branch
+git checkout dev  # or your feature branch
+git merge main
+git push origin dev
+
+# 6. Verify alignment
+bd-health
+```
+
+**Why accept beads-sync version of .beads/issues.jsonl?**
+- Beads daemon is the source of truth for issue tracking
+- `beads-sync` has the most up-to-date issue data
+- Overwriting beads data with stale main data would lose tracking history
+
+#### 4. Verify Recovery
+
+After manual merge:
+
+```bash
+# Check branch alignment
+bd-health
+
+# Verify issue counts match
+bd stats
+
+# Try bd-land again (should succeed now)
+bd-land
+```
+
+### Common Causes of Divergence
+
+**1. Direct commits to main** (without syncing from beads-sync)
+```bash
+# Bad: Committed to main while daemon was running
+git checkout main
+git commit -m "feature: something"  # ⚠️ Skipped bd-land!
+git push
+```
+
+**Fix:** Always run `bd-land` at session end to keep branches aligned
+
+**2. Force-push to beads-sync** (corrupts daemon state)
+```bash
+# Bad: Never force-push beads-sync!
+git push --force origin beads-sync  # ❌ Corrupts daemon
+```
+
+**Fix:** Never force-push beads-sync; let daemon manage it
+
+**3. Manual edits to .beads/issues.jsonl** (bypasses daemon)
+```bash
+# Bad: Edited beads data directly
+vim .beads/issues.jsonl
+git commit -m "manual edit"  # ⚠️ Bypassed daemon!
+```
+
+**Fix:** Use `bd` commands for all issue changes
+
+**4. Long-running branches** (missed multiple syncs)
+```bash
+# Risky: Feature branch hasn't synced in days
+git checkout feature/long-running
+# ... work for days without bd-land ...
+```
+
+**Fix:** Periodically run `bd-land` even during long feature work
+
+### Prevention Best Practices
+
+✅ **Run bd-land at session end** (every time!)
+```bash
+# End of every work session
+bd-land
+```
+
+✅ **Use auto-sync modes**
+```bash
+bd-config-sync auto     # Auto-sync on push
+bd-config-sync warning  # Prompt before push
+```
+
+✅ **Check health before push**
+```bash
+bd-health      # Diagnose issues
+bd-preflight   # Pre-push validation
+```
+
+✅ **Enable post-commit background sync** (automatic)
+```bash
+# Check if working
+tail -20 ~/.bmad/sync.log
+```
+
+❌ **Don't skip bd-land** (even if you're "just fixing a typo")
+❌ **Don't force-push beads-sync** (daemon's branch)
+❌ **Don't edit .beads/ manually** (use bd commands)
+
+### See Also
+
+- **bd-health**: Comprehensive diagnostics
+- **bd-fix**: Automatic recovery for common issues
+- **bd-preflight**: Pre-push validation checks
+- **Recovery Procedure** section below: Step-by-step manual recovery
 
 ---
 
