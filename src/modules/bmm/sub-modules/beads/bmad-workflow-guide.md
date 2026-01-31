@@ -193,7 +193,7 @@ gh pr create --base dev
 
 # Session end (all phases)
 # Run [HO] handover workflow or manually:
-bd-land               # Sync all branches
+bd_land               # Sync all branches
 ```
 
 ---
@@ -207,10 +207,10 @@ At the end of every session, run the `[HO]` handover workflow:
 [HO]
 
 # Or manually
-bd-release <claim-id>     # Release any claims
-bd-land                   # Sync beads-sync → main → current branch
+bd_release <claim-id>     # Release any claims
+bd_land                   # Sync beads-sync → main → current branch
 git push origin HEAD      # Push if needed
-bd-status                 # Report next ready work
+bd_status                 # Report next ready work
 ```
 
 For complex recovery scenarios, see `docs/beads-git-workflow.md`.

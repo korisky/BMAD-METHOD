@@ -93,9 +93,9 @@ bd ready --limit 3
 3. **Fast-forward only (`--ff-only`)**: Prevents merge commits if branches diverged (alerts you early)
 4. **Regular syncing**: Prevents branches from diverging in the first place
 
-> **Note (v0.0.2+):** The `bd-land` command now uses `--ff-only` for the critical `beads-sync → main` merge.
+> **Note (v0.0.2+):** The `bd_land` command now uses `--ff-only` for the critical `beads-sync → main` merge.
 > This provides early divergence detection—it will fail if branches have diverged, alerting you to investigate before proceeding.
-> See "When bd-land Fails" section below for recovery procedures.
+> See "When bd_land Fails" section below for recovery procedures.
 
 ---
 
@@ -111,27 +111,27 @@ The BMAD + Beads integration provides three levels of automatic synchronization 
 
 ### Post-Commit Background Sync
 
-After each commit, a background hook runs `bd-auto-sync` to check for divergence:
+After each commit, a background hook runs `bd_auto_sync` to check for divergence:
 
 ```bash
 # Runs automatically after: git commit
 # Non-blocking, runs in background
-# Logs to: ~/.bmad/sync.log
+# Logs to: .beads/sync.log
 ```
 
 **How it works:**
 - Only syncs if beads-sync is ahead of main
 - Runs silently in background (no output during commit)
-- Logs all activity to `~/.bmad/sync.log` for debugging
+- Logs all activity to `.beads/sync.log` for debugging
 
 **Check sync logs:**
 ```bash
-tail -f ~/.bmad/sync.log
+tail -f .beads/sync.log
 ```
 
 ### Pre-Push Interactive Check
 
-Before pushing, the pre-push hook runs `bd-auto-land` to check divergence:
+Before pushing, the pre-push hook runs `bd_auto_land` to check divergence:
 
 ```bash
 # Runs automatically before: git push
@@ -140,14 +140,14 @@ Before pushing, the pre-push hook runs `bd-auto-land` to check divergence:
 
 **Configure behavior:**
 ```bash
-bd-config-sync <mode>
+bd_config_sync <mode>
 ```
 
 **Available modes:**
 
 | Mode | Behavior |
 |------|----------|
-| `warning` (default) | Ask before syncing: "Run bd-land? [y/N]" |
+| `warning` (default) | Ask before syncing: "Run bd_land? [y/N]" |
 | `block` | Refuse push until branches synced |
 | `auto` | Auto-sync without asking |
 | `off` | Disable pre-push check |
@@ -155,31 +155,31 @@ bd-config-sync <mode>
 **Examples:**
 ```bash
 # Ask before syncing (default)
-bd-config-sync warning
+bd_config_sync warning
 
 # Auto-sync always
-bd-config-sync auto
+bd_config_sync auto
 
 # Block pushes if not synced
-bd-config-sync block
+bd_config_sync block
 
 # Disable auto-sync
-bd-config-sync off
+bd_config_sync off
 
 # Check current mode
-bd-config-sync
+bd_config_sync
 ```
 
 ### Handover Mandatory Sync
 
-During `[HO]` handover workflow, `bd-land` always executes (not conditional):
+During `[HO]` handover workflow, `bd_land` always executes (not conditional):
 
 ```bash
 # 3. Sync branches (always run)
-bd-land
+bd_land
 
 # 4. Verify ready
-bd-preflight
+bd_preflight
 
 # 5. Push
 git push
@@ -215,26 +215,26 @@ This ensures session-end syncs happen even if no divergence warning appeared.
 
 Check the log:
 ```bash
-tail -20 ~/.bmad/sync.log
+tail -20 .beads/sync.log
 ```
 
 Common issues:
 - Daemon not running → `bd daemon start`
 - beads-sync doesn't exist → normal if daemon just started
-- Merge conflict → run `bd-land` manually to resolve
+- Merge conflict → run `bd_land` manually to resolve
 
 **Pre-push check failing?**
 
 Run health check:
 ```bash
-bd-health
+bd_health
 ```
 
 Fix issues:
 ```bash
-bd-fix          # Auto-fix common issues
-bd-land         # Manual sync if needed
-bd-preflight    # Verify ready
+bd_fix          # Auto-fix common issues
+bd_land         # Manual sync if needed
+bd_preflight    # Verify ready
 ```
 
 **Disable auto-sync temporarily:**
@@ -246,16 +246,16 @@ git push --no-verify
 
 Or disable permanently:
 ```bash
-bd-config-sync off
+bd_config_sync off
 ```
 
 ---
 
-## When bd-land Fails: Branch Divergence Handling
+## When bd_land Fails: Branch Divergence Handling
 
 ### Understanding --ff-only Safety Check
 
-**Starting from version 0.0.2**, `bd-land` uses `--ff-only` for the critical `beads-sync → main` merge:
+**Starting from version 0.0.2**, `bd_land` uses `--ff-only` for the critical `beads-sync → main` merge:
 
 ```bash
 git merge beads-sync --ff-only  # Safety check: fails if diverged
@@ -272,12 +272,12 @@ git merge beads-sync --ff-only  # Safety check: fails if diverged
 - ❌ Silently merged diverged branches (could hide problems)
 - ❌ No early warning of branch divergence
 
-### When bd-land Fails
+### When bd_land Fails
 
 **Typical error message:**
 
 ```bash
-$ bd-land
+$ bd_land
 === LANDING THE PLANE ===
 
 1. Checking for open claims...
@@ -287,7 +287,7 @@ $ bd-land
 
   ❌ Cannot fast-forward. Branches diverged.
      Diagnosis: git log main..beads-sync
-     Recovery: bd-fix divergence
+     Recovery: bd_fix divergence
 ```
 
 **What this means:**
@@ -302,7 +302,7 @@ $ bd-land
 Run health check to see the full picture:
 
 ```bash
-bd-health
+bd_health
 ```
 
 **Example output:**
@@ -315,7 +315,7 @@ bd-health
 
 Branch Sync Status:
   ⚠️  beads-sync is 3 commit(s) ahead of main
-     Run: bd-land (to sync branches)
+     Run: bd_land (to sync branches)
 ```
 
 Or check manually:
@@ -333,7 +333,7 @@ git log beads-sync..main
 Use the built-in fix command:
 
 ```bash
-bd-fix divergence
+bd_fix divergence
 ```
 
 This runs diagnostics and provides specific recovery guidance.
@@ -364,7 +364,7 @@ git merge main
 git push origin dev
 
 # 6. Verify alignment
-bd-health
+bd_health
 ```
 
 **Why accept beads-sync version of .beads/issues.jsonl?**
@@ -378,13 +378,13 @@ After manual merge:
 
 ```bash
 # Check branch alignment
-bd-health
+bd_health
 
 # Verify issue counts match
 bd stats
 
-# Try bd-land again (should succeed now)
-bd-land
+# Try bd_land again (should succeed now)
+bd_land
 ```
 
 ### Common Causes of Divergence
@@ -393,11 +393,11 @@ bd-land
 ```bash
 # Bad: Committed to main while daemon was running
 git checkout main
-git commit -m "feature: something"  # ⚠️ Skipped bd-land!
+git commit -m "feature: something"  # ⚠️ Skipped bd_land!
 git push
 ```
 
-**Fix:** Always run `bd-land` at session end to keep branches aligned
+**Fix:** Always run `bd_land` at session end to keep branches aligned
 
 **2. Force-push to beads-sync** (corrupts daemon state)
 ```bash
@@ -420,46 +420,46 @@ git commit -m "manual edit"  # ⚠️ Bypassed daemon!
 ```bash
 # Risky: Feature branch hasn't synced in days
 git checkout feature/long-running
-# ... work for days without bd-land ...
+# ... work for days without bd_land ...
 ```
 
-**Fix:** Periodically run `bd-land` even during long feature work
+**Fix:** Periodically run `bd_land` even during long feature work
 
 ### Prevention Best Practices
 
-✅ **Run bd-land at session end** (every time!)
+✅ **Run bd_land at session end** (every time!)
 ```bash
 # End of every work session
-bd-land
+bd_land
 ```
 
 ✅ **Use auto-sync modes**
 ```bash
-bd-config-sync auto     # Auto-sync on push
-bd-config-sync warning  # Prompt before push
+bd_config_sync auto     # Auto-sync on push
+bd_config_sync warning  # Prompt before push
 ```
 
 ✅ **Check health before push**
 ```bash
-bd-health      # Diagnose issues
-bd-preflight   # Pre-push validation
+bd_health      # Diagnose issues
+bd_preflight   # Pre-push validation
 ```
 
 ✅ **Enable post-commit background sync** (automatic)
 ```bash
 # Check if working
-tail -20 ~/.bmad/sync.log
+tail -20 .beads/sync.log
 ```
 
-❌ **Don't skip bd-land** (even if you're "just fixing a typo")
+❌ **Don't skip bd_land** (even if you're "just fixing a typo")
 ❌ **Don't force-push beads-sync** (daemon's branch)
 ❌ **Don't edit .beads/ manually** (use bd commands)
 
 ### See Also
 
-- **bd-health**: Comprehensive diagnostics
-- **bd-fix**: Automatic recovery for common issues
-- **bd-preflight**: Pre-push validation checks
+- **bd_health**: Comprehensive diagnostics
+- **bd_fix**: Automatic recovery for common issues
+- **bd_preflight**: Pre-push validation checks
 - **Recovery Procedure** section below: Step-by-step manual recovery
 
 ---

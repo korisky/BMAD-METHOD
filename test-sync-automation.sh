@@ -20,34 +20,34 @@ echo ""
 echo "=== Phase 2: Config and Auto-Land Tests ==="
 echo ""
 
-# Test 1: bd-config-sync without arguments (show current)
+# Test 1: bd_config_sync without arguments (show current)
 echo "Test 1: Show current config"
-bd-config-sync
+bd_config_sync
 echo ""
 
 # Test 2: Set config to warning
 echo "Test 2: Set config to 'warning'"
-bd-config-sync warning
+bd_config_sync warning
 echo ""
 
 # Test 3: Set config to auto
 echo "Test 3: Set config to 'auto'"
-bd-config-sync auto
+bd_config_sync auto
 echo ""
 
 # Test 4: Set config to block
 echo "Test 4: Set config to 'block'"
-bd-config-sync block
+bd_config_sync block
 echo ""
 
 # Test 5: Set config to off
 echo "Test 5: Set config to 'off'"
-bd-config-sync off
+bd_config_sync off
 echo ""
 
 # Test 6: Try invalid config
 echo "Test 6: Try invalid config 'invalid'"
-if bd-config-sync invalid 2>&1 | grep -q "Invalid mode"; then
+if bd_config_sync invalid 2>&1 | grep -q "Invalid mode"; then
     echo "✅ Correctly rejected invalid mode"
 else
     echo "❌ Should have rejected invalid mode"
@@ -62,24 +62,24 @@ echo ""
 
 # Test 8: Reset to warning (default)
 echo "Test 8: Reset to 'warning' (default)"
-bd-config-sync warning
+bd_config_sync warning
 echo ""
 
-# Test 9: Check bd-auto-land function exists
-echo "Test 9: Check bd-auto-land function exists"
-if type bd-auto-land >/dev/null 2>&1; then
-    echo "✅ bd-auto-land function exists"
+# Test 9: Check bd_auto_land function exists
+echo "Test 9: Check bd_auto_land function exists"
+if type bd_auto_land >/dev/null 2>&1; then
+    echo "✅ bd_auto_land function exists"
 else
-    echo "❌ bd-auto-land function not found"
+    echo "❌ bd_auto_land function not found"
 fi
 echo ""
 
-# Test 10: Check bd-auto-sync function exists
-echo "Test 10: Check bd-auto-sync function exists"
-if type bd-auto-sync >/dev/null 2>&1; then
-    echo "✅ bd-auto-sync function exists"
+# Test 10: Check bd_auto_sync function exists
+echo "Test 10: Check bd_auto_sync function exists"
+if type bd_auto_sync >/dev/null 2>&1; then
+    echo "✅ bd_auto_sync function exists"
 else
-    echo "❌ bd-auto-sync function not found"
+    echo "❌ bd_auto_sync function not found"
 fi
 echo ""
 
@@ -88,7 +88,7 @@ echo ""
 
 # Test 11: Check if hooks are in install.sh
 echo "Test 11: Check pre-push hook in install.sh"
-if grep -q "bd-auto-land" src/modules/bmm/sub-modules/beads/install.sh; then
+if grep -q "bd_auto_land" src/modules/bmm/sub-modules/beads/install.sh; then
     echo "✅ pre-push hook installation found in install.sh"
 else
     echo "❌ pre-push hook installation not found"
@@ -97,7 +97,7 @@ echo ""
 
 # Test 12: Check post-commit hook in install.sh
 echo "Test 12: Check post-commit hook in install.sh"
-if grep -q "bd-auto-sync" src/modules/bmm/sub-modules/beads/install.sh; then
+if grep -q "bd_auto_sync" src/modules/bmm/sub-modules/beads/install.sh; then
     echo "✅ post-commit hook installation found in install.sh"
 else
     echo "❌ post-commit hook installation not found"
@@ -117,7 +117,7 @@ fi
 echo ""
 
 # Test 14: Check handover instructions updated
-echo "Test 14: Check handover instructions for mandatory bd-land"
+echo "Test 14: Check handover instructions for mandatory bd_land"
 if grep -q "Sync All Branches" src/modules/bmm/workflows/4-implementation/handover/instructions.md; then
     echo "✅ Handover instructions updated"
 else
@@ -125,12 +125,12 @@ else
 fi
 echo ""
 
-# Test 15: Check bd-help includes new commands
-echo "Test 15: Check bd-help for new commands"
-if bd-help | grep -q "bd-config-sync"; then
-    echo "✅ bd-help includes bd-config-sync"
+# Test 15: Check bd_help includes new commands
+echo "Test 15: Check bd_help for new commands"
+if bd_help | grep -q "bd_config_sync"; then
+    echo "✅ bd_help includes bd_config_sync"
 else
-    echo "❌ bd-help missing bd-config-sync"
+    echo "❌ bd_help missing bd_config_sync"
 fi
 echo ""
 
@@ -142,6 +142,6 @@ echo "Manual verification needed:"
 echo "  • Install in target project: bash src/modules/bmm/sub-modules/beads/install.sh"
 echo "  • Test commit → post-commit hook → check ~/.bmad/sync.log"
 echo "  • Test push → pre-push hook → verify prompt"
-echo "  • Test [HO] handover → verify bd-land always runs"
+echo "  • Test [HO] handover → verify bd_land always runs"
 echo ""
 echo "✅ Automated tests passed"

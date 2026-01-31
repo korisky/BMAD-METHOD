@@ -1,36 +1,36 @@
 #!/bin/bash
 # BMAD + Beads Integration Aliases
 # Source this file in your ~/.bashrc or ~/.zshrc:
-#   source ~/.bmad/beads-aliases.sh
+#   [ -f .beads/lib/aliases.sh ] && source .beads/lib/aliases.sh
 
 # ============================================
 # QUICK STATUS COMMANDS
 # ============================================
 
 # See ready work + active blockers
-alias bd-status='bd ready --pretty && echo "---" && bd list --type blocker --status open'
+alias bd_status='bd ready --pretty && echo "---" && bd list --type blocker --status open'
 
 # See ready work only
-alias bd-next='bd ready --pretty --limit 10'
+alias bd_next='bd ready --pretty --limit 10'
 
 # See all blockers
-alias bd-blockers='bd list --type blocker --status open'
+alias bd_blockers='bd list --type blocker --status open'
 
 # See all decisions
-alias bd-decisions='bd list --type decision --status open'
+alias bd_decisions='bd list --type decision --status open'
 
 # See HALTs (priority 0)
-alias bd-halts='bd list --type blocker --priority 0 --status open'
+alias bd_halts='bd list --type blocker --priority 0 --status open'
 
 # See who's working on what
-alias bd-who='bd list --type task --status in_progress'
+alias bd_who='bd list --type task --status in_progress'
 
 # ============================================
 # INTERNAL HELPER FUNCTIONS
 # ============================================
 
 # Get the default branch (main/master)
-# Used by: bd-land, bd-auto-land, bd-auto-sync, bd-health
+# Used by: bd_land, bd_auto_land, bd_auto_sync, bd_health
 _bmad_default_branch() {
   git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main"
 }
@@ -56,11 +56,11 @@ _bmad_branch_exists() {
 # ============================================
 
 # Claim a story before starting work
-# Usage: bd-claim "1-2-user-auth"
-bd-claim() {
+# Usage: bd_claim "1-2-user-auth"
+bd_claim() {
   local story="$1"
   if [ -z "$story" ]; then
-    echo "Usage: bd-claim <story-key>"
+    echo "Usage: bd_claim <story-key>"
     return 1
   fi
 
@@ -84,21 +84,21 @@ bd-claim() {
 }
 
 # Release a claim when done
-# Usage: bd-release <id>
-bd-release() {
+# Usage: bd_release <id>
+bd_release() {
   local id="$1"
   if [ -z "$id" ]; then
-    echo "Usage: bd-release <id>"
+    echo "Usage: bd_release <id>"
     return 1
   fi
   bd close "$id" --reason "Done"
 }
 
 # Mark work as done (syncs BMAD completion to Beads)
-# Usage: bd-done "1-2-user-auth" or bd-done "epic-2"
-bd-done() {
+# Usage: bd_done "1-2-user-auth" or bd_done "epic-2"
+bd_done() {
   local key="$1"
-  [ -z "$key" ] && echo "Usage: bd-done <story-key|epic-key>" && return 1
+  [ -z "$key" ] && echo "Usage: bd_done <story-key|epic-key>" && return 1
 
   # Close all open tasks containing this key
   bd search "$key" --status open --type task --format '{{.ID}}' --limit 0 2>/dev/null | \
@@ -117,11 +117,11 @@ bd-done() {
 # ============================================
 
 # Create a HALT (priority 0 blocker)
-# Usage: bd-halt "3 consecutive test failures"
-bd-halt() {
+# Usage: bd_halt "3 consecutive test failures"
+bd_halt() {
   local title="$1"
   if [ -z "$title" ]; then
-    echo "Usage: bd-halt <reason>"
+    echo "Usage: bd_halt <reason>"
     return 1
   fi
   local id=$(bd q "HALT: $title" --type blocker --priority 0 --silent)
@@ -130,11 +130,11 @@ bd-halt() {
 }
 
 # Create a runtime decision
-# Usage: bd-decision "Use Redis for sessions"
-bd-decision() {
+# Usage: bd_decision "Use Redis for sessions"
+bd_decision() {
   local title="$1"
   if [ -z "$title" ]; then
-    echo "Usage: bd-decision <title>"
+    echo "Usage: bd_decision <title>"
     return 1
   fi
   local id=$(bd q "Runtime: $title" --type decision --priority 2 --silent)
@@ -143,11 +143,11 @@ bd-decision() {
 }
 
 # Create a blocker
-# Usage: bd-blocker "Waiting on API credentials"
-bd-blocker() {
+# Usage: bd_blocker "Waiting on API credentials"
+bd_blocker() {
   local title="$1"
   if [ -z "$title" ]; then
-    echo "Usage: bd-blocker <title>"
+    echo "Usage: bd_blocker <title>"
     return 1
   fi
   local id=$(bd q "Blocked: $title" --type blocker --priority 1 --silent)
@@ -156,11 +156,11 @@ bd-blocker() {
 }
 
 # Create an action item
-# Usage: bd-action "Refactor auth module"
-bd-action() {
+# Usage: bd_action "Refactor auth module"
+bd_action() {
   local title="$1"
   if [ -z "$title" ]; then
-    echo "Usage: bd-action <title>"
+    echo "Usage: bd_action <title>"
     return 1
   fi
   local id=$(bd q "Action: $title" --type task --priority 2 --silent)
@@ -173,11 +173,11 @@ bd-action() {
 # ============================================
 
 # Quick commit - skips heavy tests, runs lint-staged + beads sync only
-# Usage: bd-quick "wip: iteration message"
-bd-quick() {
+# Usage: bd_quick "wip: iteration message"
+bd_quick() {
   local msg="$1"
   if [ -z "$msg" ]; then
-    echo "Usage: bd-quick <commit-message>"
+    echo "Usage: bd_quick <commit-message>"
     echo "  Runs lint-staged + beads sync, skips full test suite"
     return 1
   fi
@@ -185,11 +185,11 @@ bd-quick() {
 }
 
 # Quick add and commit
-# Usage: bd-qadd "wip: iteration"
-bd-qadd() {
+# Usage: bd_qadd "wip: iteration"
+bd_qadd() {
   local msg="$1"
   if [ -z "$msg" ]; then
-    echo "Usage: bd-qadd <commit-message>"
+    echo "Usage: bd_qadd <commit-message>"
     echo "  Stages all changes, then quick commits"
     return 1
   fi
@@ -201,7 +201,7 @@ bd-qadd() {
 # ============================================
 
 # Full session start check
-bd-session-start() {
+bd_session_start() {
   echo "=== BEADS SESSION STATUS ==="
   echo ""
   echo "HALTs (must resolve first):"
@@ -223,7 +223,7 @@ bd-session-start() {
 }
 
 # Land the plane - session end helper with branch sync
-bd-land() {
+bd_land() {
   echo "=== LANDING THE PLANE ==="
   echo ""
 
@@ -238,7 +238,7 @@ bd-land() {
   if [ -n "$claims" ]; then
     echo "$claims"
     echo ""
-    echo "⚠️  You have open claims. Release them with: bd-release <id>"
+    echo "⚠️  You have open claims. Release them with: bd_release <id>"
     echo ""
   else
     echo "  None"
@@ -323,15 +323,15 @@ bd-land() {
 # ============================================
 
 # Configure auto-sync behavior
-# Usage: bd-config-sync <mode>
+# Usage: bd_config_sync <mode>
 # Modes: warning (default), block, auto, off
-bd-config-sync() {
+bd_config_sync() {
   local mode="$1"
   if [ -z "$mode" ]; then
     local current=$(git config beads.auto-sync 2>/dev/null || echo "warning")
     echo "Current auto-sync mode: $current"
     echo ""
-    echo "Usage: bd-config-sync <mode>"
+    echo "Usage: bd_config_sync <mode>"
     echo ""
     echo "Available modes:"
     echo "  warning  - Ask before syncing (default)"
@@ -356,7 +356,7 @@ bd-config-sync() {
 
 # Smart pre-push sync with config support
 # Returns 0 if safe to push, 1 if blocked
-bd-auto-land() {
+bd_auto_land() {
   # Check if beads-sync exists
   if ! _bmad_branch_exists beads-sync; then
     return 0  # No beads-sync = no sync needed
@@ -383,27 +383,27 @@ bd-auto-land() {
     auto)
       # Auto-sync without asking
       echo "🔄 Auto-syncing branches (beads-sync is $ahead commits ahead)..."
-      bd-land
+      bd_land
       return $?
       ;;
     block)
       # Refuse push until synced
       echo "❌ Push blocked: beads-sync is $ahead commits ahead of $default_branch"
-      echo "   Run: bd-land"
-      echo "   Or change mode: bd-config-sync warning"
+      echo "   Run: bd_land"
+      echo "   Or change mode: bd_config_sync warning"
       return 1
       ;;
     warning|*)
       # Ask before syncing (default)
       echo "⚠️  beads-sync is $ahead commit(s) ahead of $default_branch"
       echo ""
-      read -p "Run bd-land to sync branches? [y/N] " -n 1 -r
+      read -p "Run bd_land to sync branches? [y/N] " -n 1 -r
       echo ""
       if [[ $REPLY =~ ^[Yy]$ ]]; then
-        bd-land
+        bd_land
         return $?
       else
-        echo "Push cancelled. Run 'bd-land' manually when ready."
+        echo "Push cancelled. Run 'bd_land' manually when ready."
         return 1
       fi
       ;;
@@ -411,11 +411,11 @@ bd-auto-land() {
 }
 
 # Silent background sync wrapper (for post-commit hook)
-# Logs to ~/.bmad/sync.log for debugging
-bd-auto-sync() {
-  local log_file="$HOME/.bmad/sync.log"
-  local pid_file="$HOME/.bmad/.sync.pid"
-  mkdir -p "$(dirname "$log_file")"
+# Logs to .beads/logs/sync.log for debugging
+bd_auto_sync() {
+  local log_file=".beads/logs/sync.log"
+  local pid_file=".beads/tmp/.sync.pid"
+  mkdir -p .beads/logs .beads/tmp
 
   # Check if another sync is running (inspired by bd-claim pattern)
   if [ -f "$pid_file" ]; then
@@ -452,7 +452,7 @@ bd-auto-sync() {
     fi
 
     echo "Syncing: beads-sync is $ahead commits ahead"
-    bd-land 2>&1
+    bd_land 2>&1
     echo "Complete: $(date '+%Y-%m-%d %H:%M:%S')"
   } >> "$log_file" 2>&1
 
@@ -468,7 +468,7 @@ bd-auto-sync() {
 # ============================================
 
 # Health diagnostic - check project + beads status
-bd-health() {
+bd_health() {
   echo "=== BEADS HEALTH CHECK ==="
   local issues=0
 
@@ -512,7 +512,7 @@ bd-health() {
 
     if [ "$ahead" -gt 0 ]; then
       echo "  ⚠️  beads-sync is $ahead commit(s) ahead of $default_branch"
-      echo "     Run: bd-land (to sync branches)"
+      echo "     Run: bd_land (to sync branches)"
       ((issues++))
     elif [ "$behind" -gt 0 ]; then
       echo "  ⚠️  beads-sync is $behind commit(s) behind $default_branch"
@@ -533,7 +533,7 @@ bd-health() {
     local claims=$(bd list --type task --status in_progress 2>/dev/null | grep -v "^$")
     if [ -n "$claims" ]; then
       echo "$claims"
-      echo "  ℹ️  Remember to release claims when done: bd-release <id>"
+      echo "  ℹ️  Remember to release claims when done: bd_release <id>"
     else
       echo "  ✅ No active claims"
     fi
@@ -566,7 +566,7 @@ bd-health() {
 }
 
 # Check if ready to push (for humans and agents)
-bd-preflight() {
+bd_preflight() {
   echo "=== Pre-Push Checklist ==="
   local ok=true
 
@@ -584,7 +584,7 @@ bd-preflight() {
     local default_branch=$(_bmad_default_branch)
     local behind=$(_bmad_check_divergence "$default_branch" beads-sync)
     if [ "$behind" -gt 0 ]; then
-      echo "❌ beads-sync has $behind commits not in $default_branch (run bd-land)"
+      echo "❌ beads-sync has $behind commits not in $default_branch (run bd_land)"
       ok=false
     else
       echo "✅ Branches synced"
@@ -597,7 +597,7 @@ bd-preflight() {
   if command -v bd >/dev/null 2>&1; then
     local claims=$(bd list --type task --status in_progress 2>/dev/null | grep -v "^$" | head -1)
     if [ -n "$claims" ]; then
-      echo "⚠️  Open claims exist (consider releasing with bd-release)"
+      echo "⚠️  Open claims exist (consider releasing with bd_release)"
     else
       echo "✅ No open claims"
     fi
@@ -610,7 +610,7 @@ bd-preflight() {
     return 0
   else
     echo "❌ Not ready. Fix issues above."
-    echo "   Then run: bd-preflight"
+    echo "   Then run: bd_preflight"
     return 1
   fi
 }
@@ -620,7 +620,7 @@ bd-preflight() {
 # ============================================
 
 # Attempt to auto-fix common beads issues
-bd-fix() {
+bd_fix() {
   echo "=== Auto-Fix Attempt ==="
   local fixed=false
 
@@ -640,11 +640,11 @@ bd-fix() {
     return 1
   fi
 
-  # 3. Try bd-land to sync branches
-  echo "Running bd-land to sync branches..."
-  if bd-land; then
+  # 3. Try bd_land to sync branches
+  echo "Running bd_land to sync branches..."
+  if bd_land; then
     echo ""
-    echo "✅ Fixed! Run bd-preflight to verify."
+    echo "✅ Fixed! Run bd_preflight to verify."
     return 0
   else
     echo ""
@@ -658,61 +658,91 @@ bd-fix() {
 # HELP
 # ============================================
 
-bd-help() {
+bd_help() {
   echo "BMAD + Beads Integration Commands"
   echo ""
   echo "📋 SIMPLE WORKFLOW:"
   echo "  1. Work & commit normally (hook auto-syncs beads)"
-  echo "  2. bd-preflight  → check if ready to push"
-  echo "  3. If ❌: bd-land → sync branches, then bd-preflight again"
+  echo "  2. bd_preflight  → check if ready to push"
+  echo "  3. If ❌: bd_land → sync branches, then bd_preflight again"
   echo "  4. If ✅: git push"
   echo ""
   echo "🔧 CORE COMMANDS:"
-  echo "  bd-preflight     - Check if ready to push (run this!)"
-  echo "  bd-health        - Comprehensive health check (daemon, branches, claims)"
-  echo "  bd-land          - Sync branches (beads-sync → main → current)"
-  echo "  bd-fix           - Auto-fix common issues"
+  echo "  bd_preflight     - Check if ready to push (run this!)"
+  echo "  bd_health        - Comprehensive health check (daemon, branches, claims)"
+  echo "  bd_land          - Sync branches (beads-sync → main → current)"
+  echo "  bd_fix           - Auto-fix common issues"
   echo ""
   echo "🩹 TROUBLESHOOTING / RECOVERY:"
-  echo "  When bd-land fails with '❌ Cannot fast-forward. Branches diverged':"
-  echo "    1. bd-health           → Diagnose divergence (see commit counts)"
-  echo "    2. bd-fix divergence   → Auto-recovery (recommended)"
+  echo "  When bd_land fails with '❌ Cannot fast-forward. Branches diverged':"
+  echo "    1. bd_health           → Diagnose divergence (see commit counts)"
+  echo "    2. bd_fix divergence   → Auto-recovery (recommended)"
   echo "    3. Manual recovery     → See docs/beads-git-workflow.md"
   echo ""
   echo "  Common recovery commands:"
-  echo "    bd-health              → Check branch sync status"
-  echo "    bd-fix                 → Auto-fix common issues"
+  echo "    bd_health              → Check branch sync status"
+  echo "    bd_fix                 → Auto-fix common issues"
   echo "    git log main..beads-sync       → See what's ahead"
   echo "    git merge beads-sync --no-ff  → Manual merge (if auto-fix fails)"
   echo ""
   echo "⚙️  AUTO-SYNC CONFIG:"
-  echo "  bd-config-sync <mode>  - Configure auto-sync behavior"
+  echo "  bd_config_sync <mode>  - Configure auto-sync behavior"
   echo "    Modes: warning (ask), block (refuse), auto (always), off (disable)"
   echo "  Current: $(git config beads.auto-sync 2>/dev/null || echo 'warning')"
   echo ""
   echo "⚡ QUICK COMMITS (human-agent mixed workflow):"
-  echo "  bd-quick <msg>   - Commit with lint-staged only (skip tests)"
-  echo "  bd-qadd <msg>    - Stage all + quick commit"
+  echo "  bd_quick <msg>   - Commit with lint-staged only (skip tests)"
+  echo "  bd_qadd <msg>    - Stage all + quick commit"
   echo ""
   echo "STATUS:"
-  echo "  bd-status        - Ready work + blockers"
-  echo "  bd-next          - Ready work only"
-  echo "  bd-blockers      - All blockers"
-  echo "  bd-halts         - Critical issues (P0)"
+  echo "  bd_status        - Ready work + blockers"
+  echo "  bd_next          - Ready work only"
+  echo "  bd_blockers      - All blockers"
+  echo "  bd_halts         - Critical issues (P0)"
   echo ""
   echo "CLAIMING:"
-  echo "  bd-claim <story> - Claim a story before starting"
-  echo "  bd-release <id>  - Release a claim when done"
+  echo "  bd_claim <story> - Claim a story before starting"
+  echo "  bd_release <id>  - Release a claim when done"
   echo ""
   echo "CREATE:"
-  echo "  bd-halt <reason> - Create HALT (P0 blocker)"
-  echo "  bd-decision <t>  - Create runtime decision"
-  echo "  bd-blocker <t>   - Create blocker"
-  echo "  bd-action <t>    - Create action item"
+  echo "  bd_halt <reason> - Create HALT (P0 blocker)"
+  echo "  bd_decision <t>  - Create runtime decision"
+  echo "  bd_blocker <t>   - Create blocker"
+  echo "  bd_action <t>    - Create action item"
   echo ""
   echo "📚 Documentation:"
   echo "  docs/beads-git-workflow.md"
   echo ""
 }
 
-echo "BMAD+Beads aliases loaded. Run 'bd-help' for commands."
+# ============================================
+# DEPRECATED: Backward Compatibility Aliases
+# ============================================
+# Support for old hyphenated names (will be removed in v3.0)
+
+alias bd-status='bd_status'
+alias bd-next='bd_next'
+alias bd-blockers='bd_blockers'
+alias bd-decisions='bd_decisions'
+alias bd-halts='bd_halts'
+alias bd-who='bd_who'
+alias bd-claim='bd_claim'
+alias bd-release='bd_release'
+alias bd-done='bd_done'
+alias bd-halt='bd_halt'
+alias bd-decision='bd_decision'
+alias bd-blocker='bd_blocker'
+alias bd-action='bd_action'
+alias bd-quick='bd_quick'
+alias bd-qadd='bd_qadd'
+alias bd-session-start='bd_session_start'
+alias bd-land='bd_land'
+alias bd-config-sync='bd_config_sync'
+alias bd-auto-land='bd_auto_land'
+alias bd-auto-sync='bd_auto_sync'
+alias bd-health='bd_health'
+alias bd-preflight='bd_preflight'
+alias bd-fix='bd_fix'
+alias bd-help='bd_help'
+
+echo "BMAD+Beads aliases loaded. Run 'bd_help' for commands."
