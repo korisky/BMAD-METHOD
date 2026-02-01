@@ -313,7 +313,7 @@ class Installer {
 
     try {
       const { execSync } = require('node:child_process');
-      const path = require('path');
+      const path = require('node:path');
 
       // Run the beads install script
       console.log(chalk.dim('  Running Beads setup...'));
@@ -366,11 +366,24 @@ class Installer {
       }
 
       // Check 4: Aliases installed
-      const aliasesFile = path.join(require('os').homedir(), '.bmad', 'beads-aliases.sh');
+      const aliasesFile = path.join(require('node:os').homedir(), '.bmad', 'beads-aliases.sh');
+      const legacyAliasesFile = path.join(process.cwd(), '.beads', 'lib', 'aliases.sh');
+
       if (await fs.pathExists(aliasesFile)) {
         console.log(chalk.green('    ✓ Shell aliases installed to ~/.bmad/beads-aliases.sh'));
+
+        // Check for legacy path and warn
+        if (await fs.pathExists(legacyAliasesFile)) {
+          console.log(chalk.yellow('    ⚠ Legacy aliases found at .beads/lib/aliases.sh (can be removed)'));
+        }
       } else {
         console.warn(chalk.yellow('    ⚠ Shell aliases not found at ~/.bmad/beads-aliases.sh'));
+
+        // Check if using legacy path
+        if (await fs.pathExists(legacyAliasesFile)) {
+          console.warn(chalk.yellow('    ℹ Found legacy path .beads/lib/aliases.sh - migration recommended'));
+        }
+
         validationIssues++;
       }
 

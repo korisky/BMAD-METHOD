@@ -1,7 +1,9 @@
 #!/bin/bash
 # BMAD + Beads Integration Aliases
-# Source this file in your ~/.bashrc or ~/.zshrc:
-#   [ -f .beads/lib/aliases.sh ] && source .beads/lib/aliases.sh
+# Installed to: ~/.bmad/beads-aliases.sh
+# Auto-sourced by shell profile (added by installer)
+# Or manually add to ~/.bashrc or ~/.zshrc:
+#   [ -f ~/.bmad/beads-aliases.sh ] && source ~/.bmad/beads-aliases.sh
 
 # ============================================
 # QUICK STATUS COMMANDS

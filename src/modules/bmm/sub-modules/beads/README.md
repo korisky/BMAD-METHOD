@@ -15,6 +15,8 @@ This sub-module adds Beads runtime coordination to BMAD workflows.
 
 ## Installation
 
+**Migrating from v2.0?** See [MIGRATION.md](./MIGRATION.md)
+
 ### Automatic (via BMAD installer)
 
 During `npx bmad-method install`, select "Enable Beads integration".
