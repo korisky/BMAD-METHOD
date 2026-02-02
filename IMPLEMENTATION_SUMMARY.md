@@ -2,6 +2,20 @@
 
 **Date:** 2026-01-29
 **Status:** ✅ Complete - All Phases Implemented
+**Updated:** 2026-02-01 (v3.0 - Project-local configuration)
+
+---
+
+## Architecture Change (v3.0)
+
+**Fresh installations now use project-local configuration:**
+- **Aliases:** `.beads/lib/bmad-aliases.sh` (project-local, NOT global)
+- **Sync Log:** `.beads/logs/sync.log` (project-local)
+- **Version:** `.beads/.bmad-version` (tracks installer version)
+- **NO global config** at `~/.bmad/` is created for new projects
+- **NO shell profile modification** - clean installation
+
+See `EXISTING-PROJECTS-HANDOFF.md` for migration guidance for existing projects.
 
 ---
 
@@ -100,7 +114,7 @@ Added silent background sync after commits:
 
 1. **`bd-auto-sync()`** - Silent wrapper for background sync
    - Location: `beads-aliases.sh:375-403`
-   - Logs to: `~/.bmad/sync.log`
+   - Logs to: `.beads/logs/sync.log`
    - Non-blocking (runs in background)
    - Only syncs if divergence detected
 
@@ -117,7 +131,7 @@ Added silent background sync after commits:
 (bd-auto-sync &) 2>/dev/null
 
 # Check logs:
-tail -f ~/.bmad/sync.log
+tail -f .beads/logs/sync.log
 ```
 
 ---
@@ -172,7 +186,7 @@ tail -f ~/.bmad/sync.log
 │ Trigger: After every commit                                 │
 │ Action:  bd-auto-sync (background, non-blocking)            │
 │ When:    Only if beads-sync ahead of main                   │
-│ Log:     ~/.bmad/sync.log                                   │
+│ Log:     .beads/logs/sync.log                                   │
 └─────────────────────────────────────────────────────────────┘
                            ↓
 ┌─────────────────────────────────────────────────────────────┐
@@ -202,7 +216,7 @@ tail -f ~/.bmad/sync.log
 # 1. Developer commits
 git commit -m "feat: add user auth"
 # → Post-commit hook runs bd-auto-sync in background
-# → Logs to ~/.bmad/sync.log
+# → Logs to .beads/logs/sync.log
 # → Commit completes immediately (non-blocking)
 
 # 2. Developer pushes
@@ -280,7 +294,7 @@ git push          # Always works
 **Phase 3b: Background sync**
 - [ ] Commit a change (triggers post-commit hook)
 - [ ] Verify commit completes immediately (non-blocking)
-- [ ] Check `~/.bmad/sync.log` for sync records
+- [ ] Check `.beads/logs/sync.log` for sync records
 - [ ] Verify branches synced after hook completes
 - [ ] Test with no divergence (fast path)
 
@@ -335,7 +349,7 @@ git push          # Always works
 **Background sync not working?**
 ```bash
 # Check the log
-tail -20 ~/.bmad/sync.log
+tail -20 .beads/logs/sync.log
 
 # Verify daemon running
 bd stats
@@ -437,8 +451,9 @@ bd-config-sync off
 - **Primary Docs:** `docs/beads-git-workflow.md`
 - **Workflow Guide:** `workflows/4-implementation/handover/instructions.md`
 - **Agent Guide:** `AGENTS.md.template`
-- **Aliases:** `~/.bmad/beads-aliases.sh`
-- **Sync Log:** `~/.bmad/sync.log`
+- **Aliases:** `.beads/lib/bmad-aliases.sh` (project-local)
+- **Sync Log:** `.beads/logs/sync.log` (project-local)
+- **Version:** `.beads/.bmad-version`
 
 ---
 

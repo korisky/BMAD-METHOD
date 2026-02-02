@@ -15,8 +15,6 @@ This sub-module adds Beads runtime coordination to BMAD workflows.
 
 ## Installation
 
-**Migrating from v2.0?** See [MIGRATION.md](./MIGRATION.md)
-
 ### Automatic (via BMAD installer)
 
 During `npx bmad-method install`, select "Enable Beads integration".
@@ -25,13 +23,21 @@ During `npx bmad-method install`, select "Enable Beads integration".
 
 ```bash
 # From project root
-./src/modules/bmm/sub-modules/beads/install.sh
-
-# Or manually:
-bd init
-bd hooks install
-source ~/.bmad/beads-aliases.sh
+bash ./src/modules/bmm/sub-modules/beads/install.sh
 ```
+
+This installs:
+- ✅ Project-local aliases at `.beads/lib/bmad-aliases.sh`
+- ✅ Git hooks (pre-push, post-commit) for auto-sync
+- ✅ Documentation to `docs/`
+
+**For shell usage:**
+```bash
+# Source manually when needed
+source .beads/lib/bmad-aliases.sh
+```
+
+Aliases work automatically in git hooks without sourcing.
 
 ## Quick Reference
 

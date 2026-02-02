@@ -194,10 +194,10 @@ async function runTests() {
   console.log(`${colors.yellow}Test Suite 6: Beads Integration${colors.reset}\n`);
 
   try {
-    // Check beads-aliases.sh exists and contains bd-action function
+    // Check beads-aliases.sh exists and contains bd-action alias
     const beadsAliasesPath = path.join(projectRoot, 'src/modules/bmm/sub-modules/beads/beads-aliases.sh');
     const aliasesContent = await fs.readFile(beadsAliasesPath, 'utf8');
-    assert(aliasesContent.includes('bd-action()'), 'beads-aliases.sh contains bd-action function');
+    assert(aliasesContent.includes("alias bd-action='bd_action'"), 'beads-aliases.sh contains bd-action alias');
     assert(aliasesContent.includes('bd-claim'), 'beads-aliases.sh contains bd-claim alias');
 
     // Check injections.yaml exists and contains BEADS INTEGRATION marker

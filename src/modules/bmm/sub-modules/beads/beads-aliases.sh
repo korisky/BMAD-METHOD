@@ -1,9 +1,9 @@
 #!/bin/bash
 # BMAD + Beads Integration Aliases
-# Installed to: ~/.bmad/beads-aliases.sh
-# Auto-sourced by shell profile (added by installer)
-# Or manually add to ~/.bashrc or ~/.zshrc:
-#   [ -f ~/.bmad/beads-aliases.sh ] && source ~/.bmad/beads-aliases.sh
+# Installed to: .beads/lib/bmad-aliases.sh (project-local)
+# Available in git hooks automatically
+# For shell usage, manually source:
+#   source .beads/lib/bmad-aliases.sh
 
 # ============================================
 # QUICK STATUS COMMANDS
@@ -553,6 +553,21 @@ bd_health() {
     else
       echo "  ✅ No HALTs"
     fi
+  fi
+
+  # 7. Check config location
+  echo ""
+  echo "Configuration:"
+  if [ -f .beads/lib/bmad-aliases.sh ]; then
+    echo "  ✅ Using project-local config (.beads/lib/)"
+    if [ -f .beads/.bmad-version ]; then
+      local version=$(cat .beads/.bmad-version)
+      echo "     Version: $version"
+    fi
+  else
+    echo "  ❌ No config found"
+    echo "     Run installer: bash <path>/install.sh"
+    ((issues++))
   fi
 
   # Summary

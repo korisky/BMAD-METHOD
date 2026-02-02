@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# BMAD + Beads Integration Installer (v2.0)
-# Simplified project-local installation
+# BMAD + Beads Integration Installer (v3.0)
+# Project-local configuration with opt-in shell integration
 
 set -e
 
@@ -31,55 +31,17 @@ else
 fi
 echo ""
 
-# 3. Install aliases to global ~/.bmad/
+# 3. Install aliases to project-local .beads/lib/
 echo "Installing BMAD aliases..."
-mkdir -p ~/.bmad ~/.bmad/logs ~/.bmad/tmp
-cp "$SCRIPT_DIR/beads-aliases.sh" ~/.bmad/beads-aliases.sh
-echo "  ✅ Installed to ~/.bmad/beads-aliases.sh"
-
-# Keep project-local dirs for logs
-mkdir -p .beads/logs .beads/tmp
+mkdir -p .beads/lib .beads/logs .beads/tmp
+cp "$SCRIPT_DIR/beads-aliases.sh" .beads/lib/bmad-aliases.sh
+echo "0.0.2" > .beads/.bmad-version
+echo "  ✅ Installed to .beads/lib/bmad-aliases.sh"
 echo ""
 
-# 3b. Add to shell profile (if not already present)
-echo "Configuring shell profile..."
+echo "  ℹ️  To use aliases in shell, manually source when needed:"
+echo "     source .beads/lib/bmad-aliases.sh"
 
-# Detect shell
-USER_SHELL=$(basename "$SHELL")
-PROFILE_FILE=""
-
-case "$USER_SHELL" in
-  bash)
-    if [ -f ~/.bash_profile ]; then
-      PROFILE_FILE=~/.bash_profile
-    elif [ -f ~/.bashrc ]; then
-      PROFILE_FILE=~/.bashrc
-    fi
-    ;;
-  zsh)
-    PROFILE_FILE=~/.zshrc
-    ;;
-  *)
-    echo "  ⚠️  Unknown shell: $USER_SHELL"
-    echo "     Add manually to your shell profile:"
-    echo "     source ~/.bmad/beads-aliases.sh"
-    PROFILE_FILE=""
-    ;;
-esac
-
-if [ -n "$PROFILE_FILE" ]; then
-  SOURCING_LINE="[ -f ~/.bmad/beads-aliases.sh ] && source ~/.bmad/beads-aliases.sh"
-
-  if grep -qF "$SOURCING_LINE" "$PROFILE_FILE" 2>/dev/null; then
-    echo "  ✅ Shell profile already configured ($PROFILE_FILE)"
-  else
-    echo "" >> "$PROFILE_FILE"
-    echo "# BMAD + Beads Integration (added by installer)" >> "$PROFILE_FILE"
-    echo "$SOURCING_LINE" >> "$PROFILE_FILE"
-    echo "  ✅ Added to $PROFILE_FILE"
-    echo "     Run: exec \$SHELL (to reload)"
-  fi
-fi
 echo ""
 
 # 4. Detect hook system (Husky or .git/hooks)
@@ -165,8 +127,10 @@ EOF
   BMAD_EXTENSION='
 # BMAD + Beads auto-sync check (added by beads sync automation)
 # Skip in CI environment
-if [ -z "$CI" ] && [ -f ~/.bmad/beads-aliases.sh ]; then
-    source ~/.bmad/beads-aliases.sh
+if [ -z "$CI" ]; then
+    if [ -f .beads/lib/bmad-aliases.sh ]; then
+        source .beads/lib/bmad-aliases.sh
+    fi
     bd-auto-land || exit 1
 fi
 '
@@ -188,11 +152,12 @@ fi
 # Skip BMAD auto-sync in CI environment
 [ -n "$CI" ] && exit 0
 
-if [ -f ~/.bmad/beads-aliases.sh ]; then
-    source ~/.bmad/beads-aliases.sh
-    # Run in background, non-blocking
-    (bd-auto-sync &) 2>/dev/null
+if [ -f .beads/lib/bmad-aliases.sh ]; then
+    source .beads/lib/bmad-aliases.sh
 fi
+
+# Run in background, non-blocking
+(bd-auto-sync &) 2>/dev/null
 
 exit 0
 EOF
@@ -220,15 +185,15 @@ fi
 echo ""
 echo "=== Installation Complete ==="
 echo ""
+echo "📦 Configuration:"
+echo "  Project-local: .beads/lib/bmad-aliases.sh"
+echo "  Version: $(cat .beads/.bmad-version 2>/dev/null || echo 'unknown')"
+echo ""
 echo "📋 Next Steps:"
 echo ""
-echo "  1. Reload shell (if shell profile was updated):"
-echo "     exec \$SHELL"
-echo ""
-echo "  2. Verify installation:"
-echo "     bd-help"
-echo ""
-echo "  Note: Aliases automatically sourced from ~/.bmad/beads-aliases.sh"
+echo "  Aliases work automatically in git hooks."
+echo "  To use in shell, manually source when needed:"
+echo "    source .beads/lib/bmad-aliases.sh"
 echo ""
 echo "🔧 Key Commands:"
 echo "  bd_preflight  - Check if ready to push"
