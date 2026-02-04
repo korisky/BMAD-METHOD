@@ -363,23 +363,23 @@ class Installer {
         console.log(chalk.dim('    ℹ Daemon not running yet (will start automatically on first bd command)'));
       }
 
-      // Check 4: Aliases installed
-      const aliasesFile = path.join(require('node:os').homedir(), '.bmad', 'beads-aliases.sh');
-      const legacyAliasesFile = path.join(process.cwd(), '.beads', 'lib', 'aliases.sh');
+      // Check 4: Aliases installed (v3.0 project-local path)
+      const aliasesFile = path.join(projectDir, '.beads', 'lib', 'bmad-aliases.sh');
+      const legacyAliasesFile = path.join(require('node:os').homedir(), '.bmad', 'beads-aliases.sh');
 
       if (await fs.pathExists(aliasesFile)) {
-        console.log(chalk.green('    ✓ Shell aliases installed to ~/.bmad/beads-aliases.sh'));
+        console.log(chalk.green('    ✓ Shell aliases installed to .beads/lib/bmad-aliases.sh'));
 
-        // Check for legacy path and warn
+        // Warn if legacy global path also exists
         if (await fs.pathExists(legacyAliasesFile)) {
-          console.log(chalk.yellow('    ⚠ Legacy aliases found at .beads/lib/aliases.sh (can be removed)'));
+          console.log(chalk.yellow('    ⚠ Legacy global aliases found at ~/.bmad/beads-aliases.sh (can be removed)'));
         }
       } else {
-        console.warn(chalk.yellow('    ⚠ Shell aliases not found at ~/.bmad/beads-aliases.sh'));
+        console.warn(chalk.yellow('    ⚠ Shell aliases not found at .beads/lib/bmad-aliases.sh'));
 
-        // Check if using legacy path
+        // Check if legacy global path exists as fallback
         if (await fs.pathExists(legacyAliasesFile)) {
-          console.warn(chalk.yellow('    ℹ Found legacy path .beads/lib/aliases.sh - migration recommended'));
+          console.warn(chalk.yellow('    ℹ Found legacy path ~/.bmad/beads-aliases.sh - migration to project-local recommended'));
         }
 
         validationIssues++;

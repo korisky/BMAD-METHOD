@@ -98,7 +98,7 @@ injections:
 # Shell aliases to install
 aliases:
   source_file: "beads-aliases.sh"
-  target: "~/.bmad/beads-aliases.sh"
+  target: ".beads/lib/bmad-aliases.sh"
   install_instruction: |
-    Add to your ~/.bashrc or ~/.zshrc:
-    source ~/.bmad/beads-aliases.sh
+    Source when needed in shell:
+    source .beads/lib/bmad-aliases.sh

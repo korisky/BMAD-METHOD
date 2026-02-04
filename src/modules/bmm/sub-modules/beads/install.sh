@@ -35,7 +35,7 @@ echo ""
 echo "Installing BMAD aliases..."
 mkdir -p .beads/lib .beads/logs .beads/tmp
 cp "$SCRIPT_DIR/beads-aliases.sh" .beads/lib/bmad-aliases.sh
-echo "0.0.2" > .beads/.bmad-version
+echo "0.0.3" > .beads/.bmad-version
 echo "  ✅ Installed to .beads/lib/bmad-aliases.sh"
 echo ""
 
