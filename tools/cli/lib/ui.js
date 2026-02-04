@@ -81,7 +81,7 @@ class UI {
       hasLegacyCfg = bmadResult.hasLegacyCfg;
     }
 
-    // Handle legacy .bmad or _cfg folder - these are very old (more than 2 versions behind)
+    // Handle legacy .bmad or _cfg folder - these are very old (v4 or alpha)
     // Show version warning instead of offering conversion
     if (hasLegacyBmadFolder || hasLegacyCfg) {
       console.log('');
@@ -92,9 +92,8 @@ class UI {
           'Found a ".bmad"/"bmad" folder, or a legacy "_cfg" folder under the bmad folder - this is from a old BMAD version that is out of date for automatic upgrade, manual intervention required.',
         ),
       );
-      console.log(chalk.yellow('This version is more than 2 alpha versions behind current.'));
+      console.log(chalk.yellow('You have a legacy version installed (v4 or alpha).'));
       console.log('');
-      console.log(chalk.dim('For stability, we only support updates from the previous 2 alpha versions.'));
       console.log(chalk.dim('Legacy installations may have compatibility issues.'));
       console.log('');
       console.log(chalk.dim('For the best experience, we strongly recommend:'));
@@ -218,8 +217,8 @@ class UI {
       const currentVersion = require(packageJsonPath).version;
       const installedVersion = existingInstall.version || 'unknown';
 
-      // Check if version is too old and warn user
-      const shouldProceed = await this.showOldAlphaVersionWarning(installedVersion, currentVersion, path.basename(bmadDir));
+      // Check if version is pre beta
+      const shouldProceed = await this.showLegacyVersionWarning(installedVersion, currentVersion, path.basename(bmadDir));
 
       // If user chose to cancel, exit the installer
       if (!shouldProceed) {
@@ -402,6 +401,9 @@ class UI {
 
   /**
    * Prompt for tool/IDE selection (called after module configuration)
+   * Uses a split prompt approach:
+   *   1. Recommended tools - standard multiselect for 3 preferred tools
+   *   2. Additional tools - autocompleteMultiselect with search capability
    * @param {string} projectDir - Project directory to check for existing IDEs
    * @returns {Object} Tool configuration
    */
@@ -419,99 +421,128 @@ class UI {
     // Get IDE manager to fetch available IDEs dynamically
     const { IdeManager } = require('../installers/lib/ide/manager');
     const ideManager = new IdeManager();
+    await ideManager.ensureInitialized(); // IMPORTANT: Must initialize before getting IDEs
 
     const preferredIdes = ideManager.getPreferredIdes();
     const otherIdes = ideManager.getOtherIdes();
 
-    // Build grouped options object for groupMultiselect
-    const groupedOptions = {};
-    const processedIdes = new Set();
-    const initialValues = [];
+    // Determine which configured IDEs are in "preferred" vs "other" categories
+    const configuredPreferred = configuredIdes.filter((id) => preferredIdes.some((ide) => ide.value === id));
+    const configuredOther = configuredIdes.filter((id) => otherIdes.some((ide) => ide.value === id));
 
-    // First, add previously configured IDEs, marked with ✅
+    // Warn about previously configured tools that are no longer available
+    const allKnownValues = new Set([...preferredIdes, ...otherIdes].map((ide) => ide.value));
+    const unknownTools = configuredIdes.filter((id) => id && typeof id === 'string' && !allKnownValues.has(id));
+    if (unknownTools.length > 0) {
+      console.log(chalk.yellow(`⚠️  Previously configured tools are no longer available: ${unknownTools.join(', ')}`));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // UPGRADE PATH: If tools already configured, show all tools with configured at top
+    // ─────────────────────────────────────────────────────────────────────────────
     if (configuredIdes.length > 0) {
-      const configuredGroup = [];
-      for (const ideValue of configuredIdes) {
-        // Skip empty or invalid IDE values
-        if (!ideValue || typeof ideValue !== 'string') {
-          continue;
-        }
+      const allTools = [...preferredIdes, ...otherIdes];
 
-        // Find the IDE in either preferred or other lists
-        const preferredIde = preferredIdes.find((ide) => ide.value === ideValue);
-        const otherIde = otherIdes.find((ide) => ide.value === ideValue);
-        const ide = preferredIde || otherIde;
+      // Sort: configured tools first, then preferred, then others
+      const sortedTools = [
+        ...allTools.filter((ide) => configuredIdes.includes(ide.value)),
+        ...allTools.filter((ide) => !configuredIdes.includes(ide.value)),
+      ];
 
-        if (ide) {
-          configuredGroup.push({
-            label: `${ide.name} ✅`,
-            value: ide.value,
-          });
-          processedIdes.add(ide.value);
-          initialValues.push(ide.value); // Pre-select configured IDEs
-        } else {
-          // Warn about unrecognized IDE (but don't fail)
-          console.log(chalk.yellow(`⚠️  Previously configured IDE '${ideValue}' is no longer available`));
-        }
-      }
-      if (configuredGroup.length > 0) {
-        groupedOptions['Previously Configured'] = configuredGroup;
-      }
-    }
-
-    // Add preferred tools (excluding already processed)
-    const remainingPreferred = preferredIdes.filter((ide) => !processedIdes.has(ide.value));
-    if (remainingPreferred.length > 0) {
-      groupedOptions['Recommended Tools'] = remainingPreferred.map((ide) => {
-        processedIdes.add(ide.value);
-        return {
-          label: `${ide.name} ⭐`,
-          value: ide.value,
-        };
+      const upgradeOptions = sortedTools.map((ide) => {
+        const isConfigured = configuredIdes.includes(ide.value);
+        const isPreferred = preferredIdes.some((p) => p.value === ide.value);
+        let label = ide.name;
+        if (isPreferred) label += ' ⭐';
+        if (isConfigured) label += ' ✅';
+        return { label, value: ide.value };
       });
+
+      // Sort initialValues to match display order
+      const sortedInitialValues = sortedTools.filter((ide) => configuredIdes.includes(ide.value)).map((ide) => ide.value);
+
+      const upgradeSelected = await prompts.autocompleteMultiselect({
+        message: 'Integrate with',
+        options: upgradeOptions,
+        initialValues: sortedInitialValues,
+        required: false,
+        maxItems: 8,
+      });
+
+      const selectedIdes = upgradeSelected || [];
+
+      if (selectedIdes.length === 0) {
+        console.log('');
+        const confirmNoTools = await prompts.confirm({
+          message: 'No tools selected. Continue without installing any tools?',
+          default: false,
+        });
+
+        if (!confirmNoTools) {
+          return this.promptToolSelection(projectDir);
+        }
+
+        return { ides: [], skipIde: true };
+      }
+
+      // Display selected tools
+      this.displaySelectedTools(selectedIdes, preferredIdes, allTools);
+
+      return { ides: selectedIdes, skipIde: false };
     }
 
-    // Add other tools (excluding already processed)
-    const remainingOther = otherIdes.filter((ide) => !processedIdes.has(ide.value));
-    if (remainingOther.length > 0) {
-      groupedOptions['Additional Tools'] = remainingOther.map((ide) => ({
-        label: ide.name,
+    // ─────────────────────────────────────────────────────────────────────────────
+    // NEW INSTALL: Show all tools with search
+    // ─────────────────────────────────────────────────────────────────────────────
+    const allTools = [...preferredIdes, ...otherIdes];
+
+    const allToolOptions = allTools.map((ide) => {
+      const isPreferred = preferredIdes.some((p) => p.value === ide.value);
+      let label = ide.name;
+      if (isPreferred) label += ' ⭐';
+      return {
+        label,
         value: ide.value,
-      }));
-    }
-
-    // Add standalone "None" option at the end
-    groupedOptions[' '] = [
-      {
-        label: '⚠ None - I am not installing any tools',
-        value: '__NONE__',
-      },
-    ];
-
-    let selectedIdes = [];
-
-    selectedIdes = await prompts.groupMultiselect({
-      message: `Select tools to configure ${chalk.dim('(↑/↓ navigates, SPACE toggles, ENTER to confirm)')}:`,
-      options: groupedOptions,
-      initialValues: initialValues.length > 0 ? initialValues : undefined,
-      required: true,
-      selectableGroups: false,
+      };
     });
 
-    // If user selected both "__NONE__" and other tools, honor the "None" choice
-    if (selectedIdes && selectedIdes.includes('__NONE__') && selectedIdes.length > 1) {
-      console.log();
-      console.log(chalk.yellow('⚠️  "None - I am not installing any tools" was selected, so no tools will be configured.'));
-      console.log();
-      selectedIdes = [];
-    } else if (selectedIdes && selectedIdes.includes('__NONE__')) {
-      // Only "__NONE__" was selected
-      selectedIdes = [];
+    const selectedIdes = await prompts.autocompleteMultiselect({
+      message: 'Select tools:',
+      options: allToolOptions,
+      initialValues: configuredIdes.length > 0 ? configuredIdes : undefined,
+      required: false,
+      maxItems: 8,
+    });
+
+    const allSelectedIdes = selectedIdes || [];
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // STEP 3: Confirm if no tools selected
+    // ─────────────────────────────────────────────────────────────────────────────
+    if (allSelectedIdes.length === 0) {
+      console.log('');
+      const confirmNoTools = await prompts.confirm({
+        message: 'No tools selected. Continue without installing any tools?',
+        default: false,
+      });
+
+      if (!confirmNoTools) {
+        // User wants to select tools - recurse
+        return this.promptToolSelection(projectDir);
+      }
+
+      return {
+        ides: [],
+        skipIde: true,
+      };
     }
 
+    // Display selected tools
+    this.displaySelectedTools(allSelectedIdes, preferredIdes, allTools);
+
     return {
-      ides: selectedIdes || [],
-      skipIde: !selectedIdes || selectedIdes.length === 0,
+      ides: allSelectedIdes,
+      skipIde: allSelectedIdes.length === 0,
     };
   }
 
@@ -1715,96 +1746,40 @@ class UI {
   }
 
   /**
-   * Parse alpha version string (e.g., "6.0.0-Alpha.20")
-   * @param {string} version - Version string
-   * @returns {Object|null} Object with alphaNumber and fullVersion, or null if invalid
-   */
-  parseAlphaVersion(version) {
-    if (!version || version === 'unknown') {
-      return null;
-    }
-
-    // Remove 'v' prefix if present
-    const cleanVersion = version.toString().replace(/^v/i, '');
-
-    // Match alpha version pattern: X.Y.Z-Alpha.N (case-insensitive)
-    const match = cleanVersion.match(/[\d.]+-Alpha\.(\d+)/i);
-
-    if (!match) {
-      return null;
-    }
-
-    return {
-      alphaNumber: parseInt(match[1], 10),
-      fullVersion: cleanVersion,
-    };
-  }
-
-  /**
-   * Check if installed version is more than 2 alpha versions behind current
+   * Check if installed version is a legacy version that needs fresh install
    * @param {string} installedVersion - The installed version
-   * @param {string} currentVersion - The current version
-   * @returns {Object} Object with { isOldVersion, versionDiff, shouldWarn, installed, current }
+   * @returns {boolean} True if legacy (v4 or any alpha)
    */
-  checkAlphaVersionAge(installedVersion, currentVersion) {
-    const installed = this.parseAlphaVersion(installedVersion);
-    const current = this.parseAlphaVersion(currentVersion);
-
-    // If we can't parse either version, don't warn
-    if (!installed || !current) {
-      return { isOldVersion: false, versionDiff: 0, shouldWarn: false };
+  isLegacyVersion(installedVersion) {
+    if (!installedVersion || installedVersion === 'unknown') {
+      return true; // Treat unknown as legacy for safety
     }
-
-    // Calculate alpha version difference
-    const versionDiff = current.alphaNumber - installed.alphaNumber;
-
-    // Consider it old if more than 2 versions behind
-    const isOldVersion = versionDiff > 2;
-
-    return {
-      isOldVersion,
-      versionDiff,
-      shouldWarn: isOldVersion,
-      installed: installed.fullVersion,
-      current: current.fullVersion,
-      installedAlpha: installed.alphaNumber,
-      currentAlpha: current.alphaNumber,
-    };
+    // Check if version string contains -alpha or -Alpha (any v6 alpha)
+    return /-alpha\./i.test(installedVersion);
   }
 
   /**
-   * Show warning for old alpha version and ask if user wants to proceed
+   * Show warning for legacy version (v4 or alpha) and ask if user wants to proceed
    * @param {string} installedVersion - The installed version
    * @param {string} currentVersion - The current version
    * @param {string} bmadFolderName - Name of the BMAD folder
    * @returns {Promise<boolean>} True if user wants to proceed, false if they cancel
    */
-  async showOldAlphaVersionWarning(installedVersion, currentVersion, bmadFolderName) {
-    const versionInfo = this.checkAlphaVersionAge(installedVersion, currentVersion);
-
-    // Also warn if version is unknown or can't be parsed (legacy/unsupported)
-    const isUnknownVersion = installedVersion === 'unknown' || !versionInfo.installed;
-
-    if (!versionInfo.shouldWarn && !isUnknownVersion) {
-      return true; // Not old, proceed
+  async showLegacyVersionWarning(installedVersion, currentVersion, bmadFolderName) {
+    if (!this.isLegacyVersion(installedVersion)) {
+      return true; // Not legacy, proceed
     }
 
     console.log('');
     console.log(chalk.yellow.bold('⚠️  VERSION WARNING'));
     console.log(chalk.yellow('─'.repeat(80)));
 
-    if (isUnknownVersion) {
+    if (installedVersion === 'unknown') {
       console.log(chalk.yellow('Unable to detect your installed BMAD version.'));
       console.log(chalk.yellow('This appears to be a legacy or unsupported installation.'));
-      console.log('');
-      console.log(chalk.dim('For stability, we only support updates from the previous 2 alpha versions.'));
-      console.log(chalk.dim('Legacy installations may have compatibility issues.'));
     } else {
-      console.log(chalk.yellow(`You are updating from ${versionInfo.installed} to ${versionInfo.current}.`));
-      console.log(chalk.yellow(`This is ${versionInfo.versionDiff} alpha versions behind.`));
-      console.log('');
-      console.log(chalk.dim(`For stability, we only support updates from the previous 2 alpha versions`));
-      console.log(chalk.dim(`(Alpha.${versionInfo.currentAlpha - 2} through Alpha.${versionInfo.currentAlpha - 1}).`));
+      console.log(chalk.yellow(`You are updating from ${installedVersion} to ${currentVersion}.`));
+      console.log(chalk.yellow('You have a legacy version installed (v4 or alpha).'));
     }
 
     console.log('');
@@ -1844,6 +1819,152 @@ class UI {
     }
 
     return proceed === 'proceed';
+  }
+
+  /**
+   * Display module versions with update availability
+   * @param {Array} modules - Array of module info objects with version info
+   * @param {Array} availableUpdates - Array of available updates
+   */
+  displayModuleVersions(modules, availableUpdates = []) {
+    console.log('');
+    console.log(chalk.cyan.bold('📦 Module Versions'));
+    console.log(chalk.gray('─'.repeat(80)));
+
+    // Group modules by source
+    const builtIn = modules.filter((m) => m.source === 'built-in');
+    const external = modules.filter((m) => m.source === 'external');
+    const custom = modules.filter((m) => m.source === 'custom');
+    const unknown = modules.filter((m) => m.source === 'unknown');
+
+    const displayGroup = (group, title) => {
+      if (group.length === 0) return;
+
+      console.log(chalk.yellow(`\n${title}`));
+      for (const module of group) {
+        const updateInfo = availableUpdates.find((u) => u.name === module.name);
+        const versionDisplay = module.version || chalk.gray('unknown');
+
+        if (updateInfo) {
+          console.log(
+            `  ${chalk.cyan(module.name.padEnd(20))} ${versionDisplay} → ${chalk.green(updateInfo.latestVersion)} ${chalk.green('↑')}`,
+          );
+        } else {
+          console.log(`  ${chalk.cyan(module.name.padEnd(20))} ${versionDisplay} ${chalk.gray('✓')}`);
+        }
+      }
+    };
+
+    displayGroup(builtIn, 'Built-in Modules');
+    displayGroup(external, 'External Modules (Official)');
+    displayGroup(custom, 'Custom Modules');
+    displayGroup(unknown, 'Other Modules');
+
+    console.log('');
+  }
+
+  /**
+   * Prompt user to select which modules to update
+   * @param {Array} availableUpdates - Array of available updates
+   * @returns {Array} Selected module names to update
+   */
+  async promptUpdateSelection(availableUpdates) {
+    if (availableUpdates.length === 0) {
+      return [];
+    }
+
+    console.log('');
+    console.log(chalk.cyan.bold('🔄 Available Updates'));
+    console.log(chalk.gray('─'.repeat(80)));
+
+    const choices = availableUpdates.map((update) => ({
+      name: `${update.name} ${chalk.dim(`(v${update.installedVersion} → v${update.latestVersion})`)}`,
+      value: update.name,
+      checked: true, // Default to selecting all updates
+    }));
+
+    // Add "Update All" and "Cancel" options
+    const action = await prompts.select({
+      message: 'How would you like to proceed?',
+      choices: [
+        { name: 'Update all available modules', value: 'all' },
+        { name: 'Select specific modules to update', value: 'select' },
+        { name: 'Skip updates for now', value: 'skip' },
+      ],
+      default: 'all',
+    });
+
+    if (action === 'all') {
+      return availableUpdates.map((u) => u.name);
+    }
+
+    if (action === 'skip') {
+      return [];
+    }
+
+    // Allow specific selection
+    const selected = await prompts.multiselect({
+      message: `Select modules to update ${chalk.dim('(↑/↓ navigates, SPACE toggles, ENTER to confirm)')}:`,
+      choices: choices,
+      required: true,
+    });
+
+    return selected || [];
+  }
+
+  /**
+   * Display status of all installed modules
+   * @param {Object} statusData - Status data with modules, installation info, and available updates
+   */
+  displayStatus(statusData) {
+    const { installation, modules, availableUpdates, bmadDir } = statusData;
+
+    console.log('');
+    console.log(chalk.cyan.bold('📋 BMAD Status'));
+    console.log(chalk.gray('─'.repeat(80)));
+
+    // Installation info
+    console.log(chalk.yellow('\nInstallation'));
+    console.log(`  ${chalk.gray('Version:'.padEnd(20))} ${installation.version || chalk.gray('unknown')}`);
+    console.log(`  ${chalk.gray('Location:'.padEnd(20))} ${bmadDir}`);
+    console.log(`  ${chalk.gray('Installed:'.padEnd(20))} ${new Date(installation.installDate).toLocaleDateString()}`);
+    console.log(
+      `  ${chalk.gray('Last Updated:'.padEnd(20))} ${installation.lastUpdated ? new Date(installation.lastUpdated).toLocaleDateString() : chalk.gray('unknown')}`,
+    );
+
+    // Module versions
+    this.displayModuleVersions(modules, availableUpdates);
+
+    // Update summary
+    if (availableUpdates.length > 0) {
+      console.log(chalk.yellow.bold(`\n⚠️  ${availableUpdates.length} update(s) available`));
+      console.log(chalk.dim(`  Run 'bmad install' and select "Quick Update" to update`));
+    } else {
+      console.log(chalk.green.bold('\n✓ All modules are up to date'));
+    }
+
+    console.log('');
+  }
+
+  /**
+   * Display list of selected tools after IDE selection
+   * @param {Array} selectedIdes - Array of selected IDE values
+   * @param {Array} preferredIdes - Array of preferred IDE objects
+   * @param {Array} allTools - Array of all tool objects
+   */
+  displaySelectedTools(selectedIdes, preferredIdes, allTools) {
+    if (selectedIdes.length === 0) return;
+
+    const preferredValues = new Set(preferredIdes.map((ide) => ide.value));
+
+    console.log('');
+    console.log(chalk.dim('  Selected tools:'));
+    for (const ideValue of selectedIdes) {
+      const tool = allTools.find((t) => t.value === ideValue);
+      const name = tool?.name || ideValue;
+      const marker = preferredValues.has(ideValue) ? ' ⭐' : '';
+      console.log(chalk.dim(`  • ${name}${marker}`));
+    }
   }
 }
 

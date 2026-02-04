@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "bmad-method-beads-experimental",
-  "version": "6.0.0-alpha.23-0.0.2",
+  "version": "6.0.0-Beta.5-beads.0.0.3",
   "description": "Breakthrough Method of Agile AI-driven Development",
   "keywords": [
     "agile",
@@ -39,7 +39,6 @@
     "lint": "eslint . --ext .js,.cjs,.mjs,.yaml --max-warnings=0",
     "lint:fix": "eslint . --ext .js,.cjs,.mjs,.yaml --fix",
     "lint:md": "markdownlint-cli2 \"**/*.md\"",
-    "prepare": "husky",
     "rebundle": "node tools/cli/bundlers/bundle-web.js rebundle",
     "release:major": "gh workflow run \"Manual Release\" -f version_bump=major",
     "release:minor": "gh workflow run \"Manual Release\" -f version_bump=minor",
@@ -49,26 +48,12 @@
     "test:coverage": "c8 --reporter=text --reporter=html npm run test:schemas",
     "test:install": "node test/test-installation-components.js",
     "test:schemas": "node test/test-agent-schema.js",
+    "validate:refs": "node tools/validate-file-refs.js",
     "validate:schemas": "node tools/validate-agent-schema.js"
   },
-  "lint-staged": {
-    "*.{js,cjs,mjs}": [
-      "npm run lint:fix",
-      "npm run format:fix:staged"
-    ],
-    "*.yaml": [
-      "eslint --fix",
-      "npm run format:fix:staged"
-    ],
-    "*.json": [
-      "npm run format:fix:staged"
-    ],
-    "*.md": [
-      "markdownlint-cli2"
-    ]
-  },
   "dependencies": {
-    "@clack/prompts": "^0.11.0",
+    "@clack/core": "^1.0.0",
+    "@clack/prompts": "^1.0.0",
     "@kayvan/markdown-tree-parser": "^1.6.1",
     "boxen": "^5.1.2",
     "chalk": "^4.1.2",
@@ -81,6 +66,7 @@
     "ignore": "^7.0.5",
     "js-yaml": "^4.1.0",
     "ora": "^5.4.1",
+    "picocolors": "^1.1.1",
     "semver": "^7.6.3",
     "wrap-ansi": "^7.0.0",
     "xml2js": "^0.6.2",
@@ -88,7 +74,7 @@
   },
   "devDependencies": {
     "@astrojs/sitemap": "^3.6.0",
-    "@astrojs/starlight": "^0.37.0",
+    "@astrojs/starlight": "^0.37.5",
     "@eslint/js": "^9.33.0",
     "archiver": "^7.0.1",
     "astro": "^5.16.0",
@@ -98,9 +84,7 @@
     "eslint-plugin-n": "^17.21.3",
     "eslint-plugin-unicorn": "^60.0.0",
     "eslint-plugin-yml": "^1.18.0",
-    "husky": "^9.1.7",
-    "jest": "^30.0.4",
-    "lint-staged": "^16.1.1",
+    "jest": "^30.2.0",
     "markdownlint-cli2": "^0.19.1",
     "prettier": "^3.7.4",
     "prettier-plugin-packagejson": "^2.5.19",

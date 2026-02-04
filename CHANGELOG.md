@@ -1,5 +1,167 @@
 # Changelog
 
+## [6.0.0-Beta.5]
+
+### 🎁 Features
+
+* **Add generate-project-context workflow** — New 3-step workflow for project context generation, integrated with quick-flow-solo-dev agent
+* **Shard market research customer analysis** — Refactor monolithic customer insights into 4-step detailed customer behavior analysis workflow
+
+### 🐛 Bug Fixes
+
+* **Fix npm install peer dependency issues** — Add `.npmrc` with `legacy-peer-deps=true`, update Starlight to 0.37.5, and add `--legacy-peer-deps` flag to module installer (PR #1476)
+* **Fix leaked source paths in PRD validation report** — Replace absolute `/src/core/` paths with `{project-root}/_bmad/core/` (#1481)
+* **Fix orphaned market research customer analysis** — Connect step-01-init to step-02-customer-behavior to complete workflow sharding (#1486)
+* **Fix duplicate 2-letter brainstorming code** — Change BS to BSP to resolve conflict with cis Brainstorming module
+* **Fix tech writer sidecar functionality** — Enable proper sidecar operation (#1487)
+* **Fix relative paths in workflow steps** — Correct paths in step-11-polish (#1497) and step-e-04-complete (#1498)
+* **Fix party-mode workflow file extension** — Correct extension in workflow.xml (#1499)
+* **Fix generated slash commands** — Add `disable-model-invocation` to all generated commands (#1501)
+* **Fix agent scan and help CSV files** — Correct module-help.csv entries
+* **Fix HELP_STEP placeholder replacement** — Fix placeholder not replaced in compiled agents, fix hardcoded path, fix single quote (#1437)
+
+### 📚 Documentation
+
+* **Add exact slash commands to Getting Started guide** — Provide precise command examples for users (#1505)
+* **Remove .claude/commands from version control** — Commands are generated, not tracked (#1506)
+
+### 🔧 Maintenance
+
+* **Update Starlight to 0.37.5** — Latest version with peer dependency compatibility
+* **Add GitHub issue templates** — New bug-report.yaml and documentation.yaml templates
+
+---
+
+## [6.0.0-Beta.4]
+
+### 🐛 Bug Fixes
+
+- **Activation steps formatting fix**: Fixed missing opening quote that caused infrequent menu rendering issues
+- **Custom module installation fix**: Added missing yaml require in manifest.js to fix custom module installation
+
+---
+
+## [6.0.0-Beta.3]
+
+### 🌟 Key Highlights
+
+1. **SDET Module Replaces TEA**: TEA module removed from core, SDET module added with "automate" workflow for test automation
+2. **Gemini CLI TOML Support**: IDE integration now supports the TOML config format used by Gemini CLI
+3. **File System Sprint Status**: Default project_key support for file-system based sprint status tracking
+
+### 🔧 Features & Improvements
+
+**Module Changes:**
+- **TEA Module Moved to External** (#1430, #1443): The TEA module is now external. SDET module added with a single "automate" workflow focused on test automation
+- **SDET Module**: New module with streamlined test automation capabilities
+
+**IDE Integration:**
+- **Gemini CLI TOML Format** (#1431): Previous update accidentally switched Gemini to md instead of toml.
+
+**Sprint Status:**
+- **Default project_key** (#1446): File-system based sprint status now uses a default project_key so certain LLMs do not complain
+
+### 🐛 Bug Fixes
+
+- **Quick-flow workflow path fix** (#1368): Fixed incorrect workflow_path in bmad-quick-flow/quick-spec steps (step-01, step-02, step-03) - changed from non-existent 'create-tech-spec' to correct 'quick-spec'
+- **PRD edit flow paths**: Fixed path references in PRD editing workflow
+- **Agent file handling**: Changes to prevent double agent files and use .agent.md file extensions
+- **README link fix**: Corrected broken documentation links
+
+## [6.0.0-Beta.2]
+
+- Fix installer so commands match what is installed, centralize most ide into a central file instead of separate files for each ide.
+- Specific IDEs may still need udpates, but all is config driven now and should be easier to maintain
+- Kiro still needs updates, but its been in this state since contributed, will investigate soon
+- Any version older than Beta.0 will recommend removal and reinstall to project. From later alphas though its sufficient to quick update if still desired, but best is just start fresh with Beta.
+
+## [6.0.0-Beta.1]
+
+**Release: January 2026 - Alpha to Beta Transition**
+
+### 🎉 Beta Release
+
+- **Transition from Alpha to Beta**: BMad Method is now in Beta! This marks a significant milestone in the framework's development
+- **NPM Default Tag**: Beta versions are now published with the `latest` tag, making `npx bmad-method` serve the beta version by default
+
+### 🌟 Key Highlights
+
+1. **bmad-help**: Revolutionary AI-powered guidance system replaces the alpha workflow-init and workflow tracking — introduces full AI intelligence to guide users through workflows, commands, and project context
+2. **Module Ecosystem Expansion**: bmad-builder, CIS (Creative Intelligence Suite), and Game Dev Studio moved to separate repositories for focused development
+3. **Installer Consolidation**: Unified installer architecture with standardized command naming (`bmad-dash-case.md` or `bmad-*-agent-*.md`)
+4. **Windows Compatibility**: Complete migration from Inquirer.js to @clack/prompts for reliable cross-platform support
+
+### 🚀 Major Features
+
+**bmad-help - Intelligent Guidance System:**
+
+- **Replaces**: workflow-init and legacy workflow tracking
+- **AI-Powered**: Full context awareness of installed modules, workflows, agents, and commands
+- **Dynamic Discovery**: Automatically catalogs all available workflows from installed modules
+- **Intelligent Routing**: Guides users to the right workflow or agent based on their goal
+- **IDE Integration**: Generates proper IDE command files for all discovered workflows
+
+**Module Restructuring:**
+
+| Module                                | Status                                            | New Location                                            |
+| ------------------------------------- | ------------------------------------------------- | ------------------------------------------------------- |
+| **bmad-builder**                      | Near beta, with docs and walkthroughs coming soon | `bmad-code-org/bmad-builder`                            |
+| **CIS** (Creative Intelligence Suite) | Published as npm package                          | `bmad-code-org/bmad-module-creative-intelligence-suite` |
+| **Game Dev Studio**                   | Published as npm package                          | `bmad-code-org/bmad-module-game-dev-studio`             |
+
+### 🔧 Installer & CLI Improvements
+
+**UnifiedInstaller Architecture:**
+
+- All IDE installers now use a common `UnifiedInstaller` class
+- Standardized command naming conventions:
+  - Workflows: `bmad-module-workflow-name.md`
+  - Agents: `bmad-module-agent-name.md`
+  - Tasks: `bmad-task-name.md`
+  - Tools: `bmad-tool-name.md`
+- External module installation from npm with progress indicators
+- Module removal on unselect with confirmation
+
+**Windows Compatibility Fix:**
+
+- Replaced Inquirer.js with @clack/prompts to fix arrow key navigation issues on Windows
+- All 91 installer workflows migrated to new prompt system
+
+### 📚 Documentation Updates
+
+**Significant docsite improvements:**
+
+- Interactive workflow guide page (`/workflow-guide`) with track selector
+- TEA documentation restructured using Diátaxis framework (25 docs)
+- Style guide optimized for LLM readers (367 lines, down from 767)
+- Glossary rewritten using table format (123 lines, down from 373)
+- README overhaul with numbered command flows and prominent `/bmad-help` callout
+- New workflow map diagram with interactive HTML
+- New editorial review tasks for document quality
+- E2E testing methodology for Game Dev Studio
+
+More documentation updates coming soon.
+
+### 🐛 Bug Fixes
+
+- Fixed TodoMVC URL references to include `/dist/` path
+- Fixed glob pattern normalization for Windows compatibility
+- Fixed YAML indentation in kilo.js customInstructions field
+- Fixed stale path references in check-implementation-readiness workflow
+- Fixed sprint-status.yaml sync in correct-course workflow
+- Fixed web bundler entry point reference
+- Fixed mergeModuleHelpCatalogs ordering after generateManifests
+
+### 📊 Statistics
+
+- **91 commits** since alpha.23
+- **969 files changed** (+23,716 / -91,509 lines)
+- **Net reduction of ~67,793 lines** through cleanup and consolidation
+- **3 major modules** moved to separate repositories
+- **Complete installer refactor** for standardization
+
+---
+
 ## [6.0.0-alpha.23]
 
 **Release: January 11, 2026**
