@@ -288,7 +288,7 @@ bd_land() {
     else
       echo "  ❌ Cannot fast-forward. Branches diverged."
       echo "     Diagnosis: git log $default_branch..beads-sync"
-      echo "     Recovery: bd-fix divergence"
+      echo "     Recovery: bd_fix divergence"
       return 1
     fi
   fi
@@ -308,7 +308,7 @@ bd_land() {
       else
         echo "  ⚠️  Cannot merge $default_branch into $current_branch"
         echo "     This may indicate merge conflicts or divergence"
-        echo "     Recovery: bd-fix divergence"
+        echo "     Recovery: bd_fix divergence"
         return 1
       fi
     fi
@@ -419,7 +419,7 @@ bd_auto_sync() {
   local pid_file=".beads/tmp/.sync.pid"
   mkdir -p .beads/logs .beads/tmp
 
-  # Check if another sync is running (inspired by bd-claim pattern)
+  # Check if another sync is running (inspired by bd_claim pattern)
   if [ -f "$pid_file" ]; then
     local existing_pid=$(cat "$pid_file" 2>/dev/null)
     if [ -n "$existing_pid" ] && ps -p "$existing_pid" > /dev/null 2>&1; then
@@ -731,35 +731,5 @@ bd_help() {
   echo "  docs/beads-git-workflow.md"
   echo ""
 }
-
-# ============================================
-# DEPRECATED: Backward Compatibility Aliases
-# ============================================
-# Support for old hyphenated names (will be removed in v3.0)
-
-alias bd-status='bd_status'
-alias bd-next='bd_next'
-alias bd-blockers='bd_blockers'
-alias bd-decisions='bd_decisions'
-alias bd-halts='bd_halts'
-alias bd-who='bd_who'
-alias bd-claim='bd_claim'
-alias bd-release='bd_release'
-alias bd-done='bd_done'
-alias bd-halt='bd_halt'
-alias bd-decision='bd_decision'
-alias bd-blocker='bd_blocker'
-alias bd-action='bd_action'
-alias bd-quick='bd_quick'
-alias bd-qadd='bd_qadd'
-alias bd-session-start='bd_session_start'
-alias bd-land='bd_land'
-alias bd-config-sync='bd_config_sync'
-alias bd-auto-land='bd_auto_land'
-alias bd-auto-sync='bd_auto_sync'
-alias bd-health='bd_health'
-alias bd-preflight='bd_preflight'
-alias bd-fix='bd_fix'
-alias bd-help='bd_help'
 
 echo "BMAD+Beads aliases loaded. Run 'bd_help' for commands."

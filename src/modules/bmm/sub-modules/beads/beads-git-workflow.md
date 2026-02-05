@@ -740,7 +740,7 @@ git checkout main
 - `.claude/CLAUDE.md` - Session protocol with "land the plane" workflow
 - `.beads/config.yaml` - Beads daemon configuration
 - `CLAUDE.md` - Project overview and tech stack
-- Beads docs: <https://github.com/beadkit/beads> (if applicable)
+- Beads docs: <https://github.com/steveyegge/beads> (if applicable)
 
 ---
 

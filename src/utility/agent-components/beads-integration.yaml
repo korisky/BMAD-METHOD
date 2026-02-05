@@ -11,46 +11,46 @@ injectable_critical_actions:
     - "END: Run `[HO]` + state NEXT agent/action"
 
     # Session start
-    - "Check status first: `bd-status` (shows ready work + blockers)"
-    - "Check HALTs: `bd-halts` (priority 0 issues)"
-    - "See who's working: `bd-who`"
+    - "Check status first: `bd_status` (shows ready work + blockers)"
+    - "Check HALTs: `bd_halts` (priority 0 issues)"
+    - "See who's working: `bd_who`"
 
     # During work
-    - 'Claim story before starting: `bd-claim "{story-key}"`'
-    - 'Runtime decisions (outside workflows): `bd-decision "{title}"`'
-    - 'External blockers: `bd-blocker "{title}"`'
-    - 'HALT conditions: `bd-halt "{reason}"` immediately'
-    - 'Action items: `bd-action "{title}"`'
+    - 'Claim story before starting: `bd_claim "{story-key}"`'
+    - 'Runtime decisions (outside workflows): `bd_decision "{title}"`'
+    - 'External blockers: `bd_blocker "{title}"`'
+    - 'HALT conditions: `bd_halt "{reason}"` immediately'
+    - 'Action items: `bd_action "{title}"`'
 
     # Session end
-    - "Release claim when done: `bd-release <id>`"
+    - "Release claim when done: `bd_release <id>`"
     - "Git hooks auto-sync Beads on commit"
     - "Push before saying done"
 
   # Role-specific - PM
   pm:
     - "ADRs go in architecture.md (BMAD) - NOT in Beads"
-    - 'Scope changes AFTER PRD done → `bd-decision "Scope: {change}"`'
+    - 'Scope changes AFTER PRD done → `bd_decision "Scope: {change}"`'
     - "Phase progress in workflow-status.yaml - NOT Beads"
 
   # Role-specific - Architect
   architect:
     - "ADRs captured during architecture workflow - NOT in Beads"
-    - 'Post-architecture technology pivots → `bd-decision "Tech: {change}"`'
+    - 'Post-architecture technology pivots → `bd_decision "Tech: {change}"`'
 
   # Role-specific - SM
   sm:
     - "Story status in sprint-status.yaml - NOT Beads"
-    - 'Cross-story dependencies → `bd-blocker "Dep: Story {B} needs {A}"`'
-    - 'Sprint deferrals → `bd-decision "Defer: {story}"`'
-    - 'Retrospective action items → `bd-action "{item}"`'
+    - 'Cross-story dependencies → `bd_blocker "Dep: Story {B} needs {A}"`'
+    - 'Sprint deferrals → `bd_decision "Defer: {story}"`'
+    - 'Retrospective action items → `bd_action "{item}"`'
 
   # Role-specific - DEV
   dev:
-    - 'ALWAYS claim story before starting: `bd-claim "{story-key}"`'
+    - 'ALWAYS claim story before starting: `bd_claim "{story-key}"`'
     - "Task checkboxes in story file - NOT Beads"
-    - 'Mid-implementation discoveries → `bd-decision "{discovery}"`'
-    - 'On HALT: `bd-halt "{reason}"` immediately'
+    - 'Mid-implementation discoveries → `bd_decision "{discovery}"`'
+    - 'On HALT: `bd_halt "{reason}"` immediately'
 
 # Priority scale (numbers only, not P0/P1/etc)
 priority_guide:
@@ -80,19 +80,19 @@ do_track:
 
 # Trigger phrases → shell aliases
 trigger_phrases:
-  "any HALTs?": "bd-halts"
-  "what's blocked?": "bd-blockers"
-  "what decisions?": "bd-decisions"
-  "who's working?": "bd-who"
-  "status": "bd-status"
-  "what's ready?": "bd-next"
-  "claim story X": 'bd-claim "X"'
-  "release claim": "bd-release <id>"
-  "HALT": 'bd-halt "reason"'
-  "that's a decision": 'bd-decision "title"'
-  "that's a blocker": 'bd-blocker "title"'
-  "land the plane": "bd-land"
-  "help": "bd-help"
+  "any HALTs?": "bd_halts"
+  "what's blocked?": "bd_blockers"
+  "what decisions?": "bd_decisions"
+  "who's working?": "bd_who"
+  "status": "bd_status"
+  "what's ready?": "bd_next"
+  "claim story X": 'bd_claim "X"'
+  "release claim": "bd_release <id>"
+  "HALT": 'bd_halt "reason"'
+  "that's a decision": 'bd_decision "title"'
+  "that's a blocker": 'bd_blocker "title"'
+  "land the plane": "bd_land"
+  "help": "bd_help"
 
 # Notes format
 notes_format: "WHO: {agent} | WHAT: {item} | WHY: {reason} | DOC: {bmad_doc_path}"

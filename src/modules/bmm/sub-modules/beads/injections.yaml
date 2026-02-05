@@ -9,7 +9,7 @@ injections:
     content: |
       <action>If Beads enabled, show runtime status after BMAD status:</action>
       <output>
-      **Beads Runtime:** `bd-halts` | `bd ready --limit 3` | `bd-who`
+      **Beads Runtime:** `bd_halts` | `bd ready --limit 3` | `bd_who`
       </output>
 
   # Inject into ALL agents (bmad-master, pm, architect, sm, dev)
@@ -22,17 +22,17 @@ injections:
 
       **During Work:**
       - Commit normally (hook auto-syncs beads)
-      - `bd-halt "{reason}"` → critical blocker (stops work)
-      - `bd-blocker "{title}"` → external blocker
-      - `bd-decision "{title}"` → runtime decision
+      - `bd_halt "{reason}"` → critical blocker (stops work)
+      - `bd_blocker "{title}"` → external blocker
+      - `bd_decision "{title}"` → runtime decision
 
       **Session End (ALWAYS):**
-      1. `bd-release {id}` → release claims
-      2. `bd-preflight` → check if ready to push
-      3. If ❌: `bd-land` then `bd-preflight` again
+      1. `bd_release {id}` → release claims
+      2. `bd_preflight` → check if ready to push
+      3. If ❌: `bd_land` then `bd_preflight` again
       4. If ✅: `git push`
 
-      **Something Broke?** Run `bd-fix`
+      **Something Broke?** Run `bd_fix`
       <!-- END BEADS INTEGRATION -->
 
   - file: "_bmad/bmm/agents/sm.md"
@@ -43,13 +43,13 @@ injections:
       ## Session: START→`[WS]` | SCOPE CHANGE→`[CC]` | END→`[HO]`→NEXT
 
       **Sprint Management:**
-      - `bd-blocker "Dep: Story {B} needs {A}"` → cross-story deps
-      - `bd-decision "Defer: {story} to next sprint"` → deferrals
-      - `bd-action "Action: {item}"` → retrospective items
+      - `bd_blocker "Dep: Story {B} needs {A}"` → cross-story deps
+      - `bd_decision "Defer: {story} to next sprint"` → deferrals
+      - `bd_action "Action: {item}"` → retrospective items
 
       **Session End:**
-      1. `bd-preflight` → check if ready
-      2. If ❌: `bd-land` then `bd-preflight` again
+      1. `bd_preflight` → check if ready
+      2. If ❌: `bd_land` then `bd_preflight` again
       3. If ✅: `git push`
       <!-- END BEADS INTEGRATION -->
 
@@ -65,12 +65,12 @@ injections:
       - Beads: Runtime scope/priority changes AFTER formal workflows
 
       **Runtime Decisions:**
-      - `bd-decision "Scope: {change}"` → scope changes
-      - `bd-decision "Priority: {change}"` → priority changes
+      - `bd_decision "Scope: {change}"` → scope changes
+      - `bd_decision "Priority: {change}"` → priority changes
 
       **Session End:**
-      1. `bd-preflight` → check if ready
-      2. If ❌: `bd-land` then `bd-preflight` again
+      1. `bd_preflight` → check if ready
+      2. If ❌: `bd_land` then `bd_preflight` again
       3. If ✅: `git push`
       <!-- END BEADS INTEGRATION -->
 
@@ -86,12 +86,12 @@ injections:
       - Beads: Post-workflow tech/pattern changes only
 
       **Post-Architecture Changes:**
-      - `bd-decision "Tech: {change}"` → technology pivots
-      - `bd-decision "Pattern: {change}"` → pattern changes
+      - `bd_decision "Tech: {change}"` → technology pivots
+      - `bd_decision "Pattern: {change}"` → pattern changes
 
       **Session End:**
-      1. `bd-preflight` → check if ready
-      2. If ❌: `bd-land` then `bd-preflight` again
+      1. `bd_preflight` → check if ready
+      2. If ❌: `bd_land` then `bd_preflight` again
       3. If ✅: `git push`
       <!-- END BEADS INTEGRATION -->
 

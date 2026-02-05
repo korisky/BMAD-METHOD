@@ -131,7 +131,7 @@ if [ -z "$CI" ]; then
     if [ -f .beads/lib/bmad-aliases.sh ]; then
         source .beads/lib/bmad-aliases.sh
     fi
-    bd-auto-land || exit 1
+    bd_auto_land || exit 1
 fi
 '
 
@@ -142,7 +142,7 @@ fi
   echo "Installing post-commit hook..."
   HOOK_FILE="$HOOK_DIR/post-commit"
 
-  if [ -f "$HOOK_FILE" ] && grep -q "bd-auto-sync" "$HOOK_FILE" 2>/dev/null; then
+  if [ -f "$HOOK_FILE" ] && grep -q "BMAD.*post-commit" "$HOOK_FILE" 2>/dev/null; then
     echo "  ✅ Post-commit hook already configured"
   else
     cat >> "$HOOK_FILE" << 'EOF'
@@ -157,7 +157,7 @@ if [ -f .beads/lib/bmad-aliases.sh ]; then
 fi
 
 # Run in background, non-blocking
-(bd-auto-sync &) 2>/dev/null
+(bd_auto_sync &) 2>/dev/null
 
 exit 0
 EOF

@@ -21,7 +21,7 @@ Before running handover:
 If you claimed a story during this session:
 
 ```bash
-bd-release <claim-id>
+bd_release <claim-id>
 ```
 
 ### Step 2: Commit Any Remaining Changes
@@ -38,7 +38,7 @@ git commit -m "type: description"
 Always sync branches during handover to prevent divergence:
 
 ```bash
-bd-land        # Sync: beads-sync → main → current branch
+bd_land        # Sync: beads-sync → main → current branch
 ```
 
 This ensures all branches stay in sync even if no divergence warning appeared.
@@ -46,7 +46,7 @@ This ensures all branches stay in sync even if no divergence warning appeared.
 ### Step 4: Verify Ready to Push
 
 ```bash
-bd-preflight
+bd_preflight
 ```
 
 This checks:
@@ -56,7 +56,7 @@ This checks:
 
 ### Step 5: Push When Ready
 
-When `bd-preflight` shows ✅:
+When `bd_preflight` shows ✅:
 
 ```bash
 git push
@@ -65,7 +65,7 @@ git push
 ### Step 6: Report Next Ready Work (Optional)
 
 ```bash
-bd-status
+bd_status
 ```
 
 ---
@@ -76,22 +76,22 @@ bd-status
 
 ```bash
 # 1. Release claims
-bd-release <claim-id>
+bd_release <claim-id>
 
 # 2. Commit changes
 git add . && git commit -m "wip: session checkpoint"
 
 # 3. Sync branches (always run)
-bd-land
+bd_land
 
 # 4. Verify ready
-bd-preflight
+bd_preflight
 
 # 5. Push
 git push
 ```
 
-**Something broke?** Run `bd-fix`
+**Something broke?** Run `bd_fix`
 
 ---
 
@@ -100,7 +100,7 @@ git push
 **First, try auto-fix:**
 
 ```bash
-bd-fix
+bd_fix
 ```
 
 This handles common issues like:
@@ -110,9 +110,9 @@ This handles common issues like:
 **Note:** With auto-sync enabled (default), branches should stay in sync automatically:
 - Post-commit hook: Background sync after commits
 - Pre-push hook: Prompts to sync before push
-- Configure with: `bd-config-sync <mode>` (warning/block/auto/off)
+- Configure with: `bd_config_sync <mode>` (warning/block/auto/off)
 
-**If bd-fix doesn't work, manual recovery:**
+**If bd_fix doesn't work, manual recovery:**
 
 1. **Check worktree status:**
    ```bash

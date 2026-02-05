@@ -28,9 +28,9 @@ Successfully implemented a complete three-phase sync automation system that prev
 ## What Was Implemented
 
 ### ✅ Phase 1: Safe Warning System (Previously Completed)
-- `bd-health` - Comprehensive health diagnostics
-- `bd-preflight` - Pre-push readiness check
-- `bd-fix` - Auto-recovery for common issues
+- `bd_health` - Comprehensive health diagnostics
+- `bd_preflight` - Pre-push readiness check
+- `bd_fix` - Auto-recovery for common issues
 - Installer validation hooks
 
 **Files:** Already existed in prior commits
@@ -41,12 +41,12 @@ Successfully implemented a complete three-phase sync automation system that prev
 
 **Added Functions:**
 
-1. **`bd-config-sync <mode>`** - Configure auto-sync behavior
+1. **`bd_config_sync <mode>`** - Configure auto-sync behavior
    - Location: `beads-aliases.sh:283-312`
    - Modes: `warning` (default), `block`, `auto`, `off`
    - Stores config in: `git config beads.auto-sync`
 
-2. **`bd-auto-land()`** - Smart pre-push sync
+2. **`bd_auto_land()`** - Smart pre-push sync
    - Location: `beads-aliases.sh:314-373`
    - Detects divergence before push
    - Respects configured mode
@@ -54,7 +54,7 @@ Successfully implemented a complete three-phase sync automation system that prev
 
 **Added Git Hooks:**
 
-3. **Pre-push hook** - Calls `bd-auto-land` before push
+3. **Pre-push hook** - Calls `bd_auto_land` before push
    - Location: `install.sh:82-116`
    - Installed to: `.git/hooks/pre-push`
    - Husky support: Manual instructions provided
@@ -63,48 +63,48 @@ Successfully implemented a complete three-phase sync automation system that prev
 **Configuration Examples:**
 ```bash
 # Ask before syncing (default)
-bd-config-sync warning
+bd_config_sync warning
 
 # Auto-sync without asking
-bd-config-sync auto
+bd_config_sync auto
 
 # Block pushes until synced
-bd-config-sync block
+bd_config_sync block
 
 # Disable auto-sync
-bd-config-sync off
+bd_config_sync off
 
 # Check current mode
-bd-config-sync
+bd_config_sync
 ```
 
 ---
 
 ### ✅ Phase 3: Seamless Integration (NEW - This Implementation)
 
-**Phase 3a: Auto bd-land in Handover**
+**Phase 3a: Auto bd_land in Handover**
 
-Modified handover workflow to make `bd-land` always execute (not conditional):
+Modified handover workflow to make `bd_land` always execute (not conditional):
 
 - **File:** `handover/instructions.md`
 - **Changes:**
-  - Step 3: "Sync All Branches" - `bd-land` always runs
-  - Step 4: "Verify Ready to Push" - `bd-preflight` verifies sync worked
+  - Step 3: "Sync All Branches" - `bd_land` always runs
+  - Step 4: "Verify Ready to Push" - `bd_preflight` verifies sync worked
   - Step 5: "Push When Ready" - `git push` (always ready now)
   - Updated quick reference script
   - Added auto-sync note to troubleshooting
 
 **Old Flow:**
 ```bash
-bd-preflight           # Check if ready
-if ❌: bd-land         # Conditional sync
+bd_preflight           # Check if ready
+if ❌: bd_land         # Conditional sync
 if ✅: git push
 ```
 
 **New Flow:**
 ```bash
-bd-land               # Always sync
-bd-preflight          # Verify sync worked
+bd_land               # Always sync
+bd_preflight          # Verify sync worked
 git push              # Always ready
 ```
 
@@ -112,13 +112,13 @@ git push              # Always ready
 
 Added silent background sync after commits:
 
-1. **`bd-auto-sync()`** - Silent wrapper for background sync
+1. **`bd_auto_sync()`** - Silent wrapper for background sync
    - Location: `beads-aliases.sh:375-403`
    - Logs to: `.beads/logs/sync.log`
    - Non-blocking (runs in background)
    - Only syncs if divergence detected
 
-2. **Post-commit hook** - Calls `bd-auto-sync` in background
+2. **Post-commit hook** - Calls `bd_auto_sync` in background
    - Location: `install.sh:118-152`
    - Installed to: `.git/hooks/post-commit`
    - Runs asynchronously (doesn't block commit)
@@ -128,7 +128,7 @@ Added silent background sync after commits:
 ```bash
 # After: git commit -m "..."
 # Hook automatically runs in background:
-(bd-auto-sync &) 2>/dev/null
+(bd_auto_sync &) 2>/dev/null
 
 # Check logs:
 tail -f .beads/logs/sync.log
@@ -141,10 +141,10 @@ tail -f .beads/logs/sync.log
 ### Primary Implementation Files
 
 1. **`src/modules/bmm/sub-modules/beads/beads-aliases.sh`** (+129 lines)
-   - Added `bd-config-sync()` function
-   - Added `bd-auto-land()` function
-   - Added `bd-auto-sync()` function
-   - Updated `bd-help` with new commands and config display
+   - Added `bd_config_sync()` function
+   - Added `bd_auto_land()` function
+   - Added `bd_auto_sync()` function
+   - Updated `bd_help` with new commands and config display
 
 2. **`src/modules/bmm/sub-modules/beads/install.sh`** (+116 lines)
    - Added pre-push hook installation (Phase 2)
@@ -153,7 +153,7 @@ tail -f .beads/logs/sync.log
    - Husky detection and manual instructions
 
 3. **`src/modules/bmm/workflows/4-implementation/handover/instructions.md`** (~36 changes)
-   - Modified Steps 3-5 to make bd-land mandatory
+   - Modified Steps 3-5 to make bd_land mandatory
    - Updated quick reference script
    - Added auto-sync note to troubleshooting
 
@@ -167,7 +167,7 @@ tail -f .beads/logs/sync.log
    - When to use each mode
 
 5. **`src/modules/bmm/sub-modules/beads/AGENTS.md.template`** (+8 lines)
-   - Added `bd-config-sync` to quick reference
+   - Added `bd_config_sync` to quick reference
    - Updated Developer role guidance
    - Added auto-sync troubleshooting
 
@@ -184,7 +184,7 @@ tail -f .beads/logs/sync.log
 │ Level 1: POST-COMMIT (Background)                           │
 │ ───────────────────────────────────────────────────────────│
 │ Trigger: After every commit                                 │
-│ Action:  bd-auto-sync (background, non-blocking)            │
+│ Action:  bd_auto_sync (background, non-blocking)            │
 │ When:    Only if beads-sync ahead of main                   │
 │ Log:     .beads/logs/sync.log                                   │
 └─────────────────────────────────────────────────────────────┘
@@ -193,7 +193,7 @@ tail -f .beads/logs/sync.log
 │ Level 2: PRE-PUSH (Interactive)                             │
 │ ───────────────────────────────────────────────────────────│
 │ Trigger: Before git push                                    │
-│ Action:  bd-auto-land (interactive or auto)                 │
+│ Action:  bd_auto_land (interactive or auto)                 │
 │ Modes:   warning/block/auto/off                             │
 │ Config:  git config beads.auto-sync                         │
 └─────────────────────────────────────────────────────────────┘
@@ -202,7 +202,7 @@ tail -f .beads/logs/sync.log
 │ Level 3: HANDOVER (Mandatory)                               │
 │ ───────────────────────────────────────────────────────────│
 │ Trigger: [HO] workflow Step 3                               │
-│ Action:  bd-land (always execute)                           │
+│ Action:  bd_land (always execute)                           │
 │ When:    Session end, before push                           │
 │ Result:  Guaranteed branch sync                             │
 └─────────────────────────────────────────────────────────────┘
@@ -215,22 +215,22 @@ tail -f .beads/logs/sync.log
 ```bash
 # 1. Developer commits
 git commit -m "feat: add user auth"
-# → Post-commit hook runs bd-auto-sync in background
+# → Post-commit hook runs bd_auto_sync in background
 # → Logs to .beads/logs/sync.log
 # → Commit completes immediately (non-blocking)
 
 # 2. Developer pushes
 git push
-# → Pre-push hook runs bd-auto-land
+# → Pre-push hook runs bd_auto_land
 # → Checks divergence
-# → If mode=warning: "Run bd-land? [y/N]"
+# → If mode=warning: "Run bd_land? [y/N]"
 # → If mode=auto: Auto-syncs silently
 # → If mode=block: Refuses push until synced
 # → If mode=off: Skips check
 
 # 3. At handover
-bd-land           # Always syncs (mandatory)
-bd-preflight      # Verifies ready
+bd_land           # Always syncs (mandatory)
+bd_preflight      # Verifies ready
 git push          # Always works
 ```
 
@@ -283,12 +283,12 @@ git push          # Always works
 - [ ] Test `block` mode (refuses push)
 - [ ] Test `auto` mode (syncs automatically)
 - [ ] Test `off` mode (skips check)
-- [ ] Verify `bd-config-sync` sets git config
+- [ ] Verify `bd_config_sync` sets git config
 
-**Phase 3a: Auto bd-land in [HO]**
+**Phase 3a: Auto bd_land in [HO]**
 - [ ] Run [HO] workflow with diverged branches
-- [ ] Verify bd-land executes at Step 3
-- [ ] Verify branches sync even if bd-preflight would pass
+- [ ] Verify bd_land executes at Step 3
+- [ ] Verify branches sync even if bd_preflight would pass
 - [ ] Verify handover succeeds without manual intervention
 
 **Phase 3b: Background sync**
@@ -305,7 +305,7 @@ git push          # Always works
 2. [ ] Initialize beads (`bd init`)
 3. [ ] Create divergence scenario
 4. [ ] Test commit → auto-sync → push flow
-5. [ ] Test [HO] handover with auto bd-land
+5. [ ] Test [HO] handover with auto bd_land
 6. [ ] Verify all branches stay in sync
 7. [ ] Test all config modes
 
@@ -329,7 +329,7 @@ git push          # Always works
 ✅ Clear warnings before problems occur
 
 ### For Developers
-✅ bd-quick still works (no disruption)
+✅ bd_quick still works (no disruption)
 ✅ Can disable auto-sync if needed
 ✅ Background sync is non-blocking
 ✅ Clear error messages
@@ -361,16 +361,16 @@ git branch -a | grep beads-sync
 **Pre-push check failing?**
 ```bash
 # Run health check
-bd-health
+bd_health
 
 # Auto-fix common issues
-bd-fix
+bd_fix
 
 # Manual sync
-bd-land
+bd_land
 
 # Verify ready
-bd-preflight
+bd_preflight
 ```
 
 **Need to disable temporarily?**
@@ -379,7 +379,7 @@ bd-preflight
 git push --no-verify
 
 # Or disable permanently
-bd-config-sync off
+bd_config_sync off
 ```
 
 ---
@@ -406,14 +406,14 @@ bd-config-sync off
 
 1. **Installer automatically sets up:**
    - Pre-commit hook (beads sync)
-   - Pre-push hook (bd-auto-land)
-   - Post-commit hook (bd-auto-sync)
-   - Shell aliases (all bd-* commands)
+   - Pre-push hook (bd_auto_land)
+   - Post-commit hook (bd_auto_sync)
+   - Shell aliases (all bd_* commands)
    - Documentation (beads-git-workflow.md)
 
 2. **Users configure once:**
    ```bash
-   bd-config-sync auto    # Or warning/block/off
+   bd_config_sync auto    # Or warning/block/off
    ```
 
 3. **Then forget about it:**

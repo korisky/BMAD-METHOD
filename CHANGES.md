@@ -10,23 +10,23 @@ All three phases of the sync automation strategy have been successfully implemen
 
 ### 1. New Shell Functions (beads-aliases.sh)
 
-**bd-config-sync <mode>** (Lines 283-312)
+**bd_config_sync <mode>** (Lines 283-312)
 - Configure auto-sync behavior
 - Modes: warning, block, auto, off
 - Stores in: `git config beads.auto-sync`
 
-**bd-auto-land()** (Lines 314-373)
+**bd_auto_land()** (Lines 314-373)
 - Smart pre-push sync with config support
 - Detects divergence before push
 - Interactive or automatic based on config
 - Returns 0 (safe) or 1 (blocked)
 
-**bd-auto-sync()** (Lines 375-403)
+**bd_auto_sync()** (Lines 375-403)
 - Silent background sync wrapper
 - Non-blocking, logs to ~/.bmad/sync.log
 - Used by post-commit hook
 
-**Updated bd-help** (Lines 575-615)
+**Updated bd_help** (Lines 575-615)
 - Added auto-sync config section
 - Shows current config mode
 - Documents new commands
@@ -34,12 +34,12 @@ All three phases of the sync automation strategy have been successfully implemen
 ### 2. Git Hooks Installation (install.sh)
 
 **Pre-push Hook** (Lines 82-116)
-- Calls `bd-auto-land` before push
+- Calls `bd_auto_land` before push
 - Exits 1 if sync needed and blocked
 - Supports Husky with manual instructions
 
 **Post-commit Hook** (Lines 118-152)
-- Calls `bd-auto-sync` in background
+- Calls `bd_auto_sync` in background
 - Non-blocking (doesn't delay commit)
 - Supports Husky with manual instructions
 
@@ -52,15 +52,15 @@ All three phases of the sync automation strategy have been successfully implemen
 
 **Step 3: Sync All Branches** (Line 19-24)
 - Changed from conditional to mandatory
-- `bd-land` always executes
+- `bd_land` always executes
 
 **Step 4: Verify Ready to Push** (Line 26-32)
-- `bd-preflight` now verification step
-- Always passes after bd-land
+- `bd_preflight` now verification step
+- Always passes after bd_land
 
 **Updated Quick Reference** (Lines 74-91)
 - Simplified to 5-step process
-- bd-land always runs at step 3
+- bd_land always runs at step 3
 
 **Updated Troubleshooting** (Lines 99-109)
 - Added auto-sync note
@@ -75,7 +75,7 @@ All three phases of the sync automation strategy have been successfully implemen
 - Troubleshooting guide
 
 **AGENTS.md.template** (+8 lines)
-- Added bd-config-sync to quick reference
+- Added bd_config_sync to quick reference
 - Updated Developer role guidance
 - Added auto-sync troubleshooting
 
@@ -127,13 +127,13 @@ This installs:
 
 ```bash
 # Choose your mode
-bd-config-sync warning   # Ask before sync (default)
-bd-config-sync auto      # Auto-sync always
-bd-config-sync block     # Block until synced
-bd-config-sync off       # Disable
+bd_config_sync warning   # Ask before sync (default)
+bd_config_sync auto      # Auto-sync always
+bd_config_sync block     # Block until synced
+bd_config_sync off       # Disable
 
 # Check current mode
-bd-config-sync
+bd_config_sync
 ```
 
 ### Daily Workflow
@@ -148,8 +148,8 @@ git push
 # → Pre-push hook checks and syncs if needed
 
 # 3. At session end
-bd-land          # Always syncs (mandatory)
-bd-preflight     # Verify
+bd_land          # Always syncs (mandatory)
+bd_preflight     # Verify
 git push         # Push
 ```
 
@@ -168,7 +168,7 @@ Result: ✅ All 15 tests passing
 - [ ] Test post-commit hook (check ~/.bmad/sync.log)
 - [ ] Test pre-push hook (verify prompt)
 - [ ] Test all config modes (warning/block/auto/off)
-- [ ] Test [HO] handover (bd-land always runs)
+- [ ] Test [HO] handover (bd_land always runs)
 
 ---
 
@@ -177,7 +177,7 @@ Result: ✅ All 15 tests passing
 ✅ **No more branch divergence** - Automatic sync prevents issues
 ✅ **Configurable automation** - Choose your level of control
 ✅ **Non-blocking** - Background sync doesn't interrupt work
-✅ **Backward compatible** - Can disable with `bd-config-sync off`
+✅ **Backward compatible** - Can disable with `bd_config_sync off`
 ✅ **Well documented** - Complete guides and troubleshooting
 ✅ **Tested** - 15 automated tests passing
 
@@ -198,7 +198,7 @@ Result: ✅ All 15 tests passing
 - Review: `IMPLEMENTATION_SUMMARY.md` (detailed explanation)
 - Workflow: `docs/beads-git-workflow.md` (auto-sync section)
 - Handover: `workflows/4-implementation/handover/instructions.md`
-- Commands: Run `bd-help` after installation
+- Commands: Run `bd_help` after installation
 
 ---
 

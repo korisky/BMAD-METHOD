@@ -200,7 +200,7 @@
 
         <!-- BEADS: Sync story completion -->
         <check if="bd command is available">
-          <action>Run `bd-done "{{story_key}}"`</action>
+          <action>Run `bd_done "{{story_key}}"`</action>
         </check>
 
         <!-- Epic completion check -->
@@ -213,7 +213,7 @@
           <action>Save file, preserving ALL comments and structure</action>
           <output>✅ Epic epic-{{epic_num}} marked as done (all stories completed)</output>
           <check if="bd command is available">
-            <action>Run `bd-done "epic-{{epic_num}}"`</action>
+            <action>Run `bd_done "epic-{{epic_num}}"`</action>
           </check>
         </check>
       </check>

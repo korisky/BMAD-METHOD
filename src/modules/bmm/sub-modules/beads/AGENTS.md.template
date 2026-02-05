@@ -22,12 +22,12 @@
 
 ```
 BMAD (Formal Outputs):              Beads (Runtime & Coordination):
-├── Documents                       ├── Work claims (bd-claim)
-├── sprint-status.yaml              ├── Runtime decisions (bd-decision)
-├── workflow-status.yaml            ├── Blockers (bd-blocker)
-├── ADRs (architecture.md)          ├── HALTs (bd-halt)
+├── Documents                       ├── Work claims (bd_claim)
+├── sprint-status.yaml              ├── Runtime decisions (bd_decision)
+├── workflow-status.yaml            ├── Blockers (bd_blocker)
+├── ADRs (architecture.md)          ├── HALTs (bd_halt)
 ├── Task checkboxes (story files)   ├── Cross-story dependencies
-└── Code review findings            └── Action items (bd-action)
+└── Code review findings            └── Action items (bd_action)
 ```
 
 **Rule**: Don't duplicate. BMAD handles formal outputs. Beads handles runtime state.
@@ -37,17 +37,17 @@ BMAD (Formal Outputs):              Beads (Runtime & Coordination):
 ## Session Start
 
 ```bash
-bd-status              # Ready work + blockers (one command)
-bd-claim "story-key"   # Claim before starting work
+bd_status              # Ready work + blockers (one command)
+bd_claim "story-key"   # Claim before starting work
 ```
 
 ## During Work
 
 ```bash
-bd-decision "title"    # Runtime decision (outside workflow)
-bd-blocker "title"     # External blocker
-bd-halt "reason"       # Critical failure (priority 0)
-bd-action "title"      # Action item
+bd_decision "title"    # Runtime decision (outside workflow)
+bd_blocker "title"     # External blocker
+bd_halt "reason"       # Critical failure (priority 0)
+bd_action "title"      # Action item
 ```
 
 ## Session End
@@ -61,12 +61,12 @@ Run the `[HO]` handover workflow to safely end your session:
 Or manually:
 
 ```bash
-bd-release <id>        # Release claim (if you claimed)
+bd_release <id>        # Release claim (if you claimed)
 git add <files>        # Stage changes
 git commit -m "..."    # Hooks auto-sync Beads
-bd-land                # Sync all branches (beads-sync → main → current)
+bd_land                # Sync all branches (beads-sync → main → current)
 git push               # Push to remote
-bd-status              # Report next ready work
+bd_status              # Report next ready work
 ```
 
 > **Note**: The `[HO]` workflow handles all of this automatically. Use it to ensure proper branch sync.
@@ -77,9 +77,9 @@ bd-status              # Report next ready work
 
 | Priority | Use For | Quick Create |
 |----------|---------|--------------|
-| 0 | HALT, critical failures | `bd-halt "reason"` |
-| 1 | Work claims, urgent blockers | `bd-blocker "title"` |
-| 2 | Decisions, action items | `bd-decision "title"` |
+| 0 | HALT, critical failures | `bd_halt "reason"` |
+| 1 | Work claims, urgent blockers | `bd_blocker "title"` |
+| 2 | Decisions, action items | `bd_decision "title"` |
 | 3-4 | Low/backlog | manual `bd create` |
 
 ---
@@ -88,17 +88,17 @@ bd-status              # Report next ready work
 
 | Command | What It Does |
 |---------|--------------|
-| `bd-status` | Ready work + blockers |
-| `bd-next` | Ready work only |
-| `bd-claim X` | Claim story before starting |
-| `bd-release X` | Release claim |
-| `bd-halt X` | Create HALT (priority 0) |
-| `bd-decision X` | Create runtime decision |
-| `bd-blocker X` | Create blocker |
-| `bd-action X` | Create action item |
-| `bd-who` | See who's working on what |
-| `bd-config-sync` | Configure auto-sync mode |
-| `bd-help` | Show all commands |
+| `bd_status` | Ready work + blockers |
+| `bd_next` | Ready work only |
+| `bd_claim X` | Claim story before starting |
+| `bd_release X` | Release claim |
+| `bd_halt X` | Create HALT (priority 0) |
+| `bd_decision X` | Create runtime decision |
+| `bd_blocker X` | Create blocker |
+| `bd_action X` | Create action item |
+| `bd_who` | See who's working on what |
+| `bd_config_sync` | Configure auto-sync mode |
+| `bd_help` | Show all commands |
 
 ---
 
@@ -127,26 +127,26 @@ These belong in BMAD files:
 ## Role-Specific Guidance
 
 ### Developer (DEV)
-- Run `bd-claim` before starting any story work
+- Run `bd_claim` before starting any story work
 - Focus on implementation quality following `project-context.md`
 - Run `[HO]` handover before ending session
 - Auto-sync: post-commit hooks keep branches synced automatically
-- Configure sync mode: `bd-config-sync <mode>` (warning/block/auto/off)
+- Configure sync mode: `bd_config_sync <mode>` (warning/block/auto/off)
 
 ### Scrum Master (SM)
-- Track cross-story dependencies via `bd-blocker "Dep: Story B needs A"`
-- Sprint deferrals: `bd-decision "Defer: {story} to next sprint"`
+- Track cross-story dependencies via `bd_blocker "Dep: Story B needs A"`
+- Sprint deferrals: `bd_decision "Defer: {story} to next sprint"`
 - Run `[HO]` handover before ending session
 
 ### Project Manager (PM)
 - ADRs go in `architecture.md` (BMAD) - NOT in Beads
-- Scope/priority changes: `bd-decision "Scope: {change}"`
+- Scope/priority changes: `bd_decision "Scope: {change}"`
 - Phase progress tracked in `workflow-status.yaml`
 
 ### Architect (ARCH)
 - ADRs captured in `architecture.md` during workflow
-- Technology pivots: `bd-decision "Tech: {change}"`
-- Pattern changes: `bd-decision "Pattern: {change}"`
+- Technology pivots: `bd_decision "Tech: {change}"`
+- Pattern changes: `bd_decision "Pattern: {change}"`
 
 ---
 
@@ -160,7 +160,7 @@ These belong in BMAD files:
 → Run `git worktree list` to check conflicts
 → See `docs/beads-git-workflow.md` for recovery
 
-**"bd-land failed"**
+**"bd_land failed"**
 → Check if branches have diverged
 → Manual sync: merge `beads-sync` → `main` → your branch
 
@@ -171,7 +171,7 @@ These belong in BMAD files:
 **"Auto-sync not working?"**
 → Check background sync log: `tail ~/.bmad/sync.log`
 → Verify daemon running: `bd stats`
-→ Check config mode: `bd-config-sync`
+→ Check config mode: `bd_config_sync`
 
 ---
 
@@ -179,15 +179,15 @@ These belong in BMAD files:
 
 | Say | Command |
 |-----|---------|
-| "what's ready?" | `bd-next` |
-| "status" | `bd-status` |
-| "claim story X" | `bd-claim "X"` |
-| "release claim" | `bd-release <id>` |
-| "HALT" | `bd-halt "reason"` |
-| "that's a decision" | `bd-decision "title"` |
-| "that's a blocker" | `bd-blocker "title"` |
-| "who's working?" | `bd-who` |
+| "what's ready?" | `bd_next` |
+| "status" | `bd_status` |
+| "claim story X" | `bd_claim "X"` |
+| "release claim" | `bd_release <id>` |
+| "HALT" | `bd_halt "reason"` |
+| "that's a decision" | `bd_decision "title"` |
+| "that's a blocker" | `bd_blocker "title"` |
+| "who's working?" | `bd_who` |
 
 ---
 
-`bd-help` | `bd-status` | `bd-next`
+`bd_help` | `bd_status` | `bd_next`

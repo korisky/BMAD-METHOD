@@ -21,7 +21,7 @@ The BMAD + Beads integration is **functional but lacks robustness for production
 2. **Installation Integration**: BMAD installer has optional Beads integration with feature flags
 3. **Agent Instructions**: Injections add Beads guidance to all agent markdown files
 4. **Documentation**: Comprehensive `beads-git-workflow.md` and handover workflow exist
-5. **Shell Aliases**: Useful `bd-*` commands for common operations
+5. **Shell Aliases**: Useful `bd_*` commands for common operations
 
 ### ⚠️ Critical Gaps Identified
 
@@ -42,8 +42,8 @@ The BMAD + Beads integration is **functional but lacks robustness for production
 
 #### 4. **Missing Recovery Commands**
 - **Documented**: Recovery procedure exists in `beads-git-workflow.md` (lines 140-202)
-- **Missing**: No `bd-recovery` command in shell aliases
-- **Missing**: No `bd-status-check` for daemon validation
+- **Missing**: No `bd_recovery` command in shell aliases
+- **Missing**: No `bd_status_check` for daemon validation
 
 ## Technical Analysis
 
@@ -89,7 +89,7 @@ git checkout dev && git merge main && bd sync
 ### Handover Workflow Integration
 **Status**: Partially integrated
 - `handover/workflow.yaml` references beads workflow
-- `handover/instructions.md` includes `bd-land` usage
+- `handover/instructions.md` includes `bd_land` usage
 - **Missing**: Automatic integration with `[HO]` command
 
 ## Risk Assessment
@@ -137,9 +137,9 @@ git checkout dev && git merge main && bd sync
    - Test command: `*handover` workflow command
 
 5. **Add Recovery Commands** (`beads-aliases.sh`)
-   - Implement `bd-recovery` for branch divergence
-   - Add `bd-status-check` for daemon validation
-   - Test command: `source ~/.bmad/beads-aliases.sh && bd-recovery`
+   - Implement `bd_recovery` for branch divergence
+   - Add `bd_status_check` for daemon validation
+   - Test command: `source .beads/lib/bmad-aliases.sh && bd_recovery`
 
 ### Phase 3: Advanced Features (Week 3+)
 **Goal**: Automated conflict detection and prevention
@@ -171,7 +171,7 @@ if [ -d ".beads" ] && command -v bd &> /dev/null; then
         BEADS_AHEAD=$(git rev-list --count beads-sync..main)
         MAIN_AHEAD=$(git rev-list --count main..dev)
         if [ "$BEADS_AHEAD" -gt 0 ] || [ "$MAIN_AHEAD" -gt 0 ]; then
-            echo "⚠️  Warning: Branches out of sync. Run 'bd-land' before push."
+            echo "⚠️  Warning: Branches out of sync. Run 'bd_land' before push."
         fi
     fi
 fi
@@ -206,7 +206,7 @@ async validateBeadsSetup(projectDir) {
 
 ### Unit Tests
 - `install.sh` hook functionality
-- `bd-land` three-way sync correctness
+- `bd_land` three-way sync correctness
 - Injection system idempotency
 
 ### Integration Tests
@@ -216,7 +216,7 @@ async validateBeadsSetup(projectDir) {
 
 ### Manual Verification Checklist
 - [ ] `npx bmad-method install` with Beads enabled completes successfully
-- [ ] `bd-land` syncs `beads-sync → main → dev` correctly
+- [ ] `bd_land` syncs `beads-sync → main → dev` correctly
 - [ ] Pre-commit hook warns about unsynced branches
 - [ ] Handover workflow integrates beads sync
 - [ ] Recovery commands work for common failure scenarios

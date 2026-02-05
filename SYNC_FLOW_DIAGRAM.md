@@ -14,14 +14,14 @@
 │ LEVEL 1: POST-COMMIT HOOK (Background Sync)                            │
 ├─────────────────────────────────────────────────────────────────────────┤
 │ Trigger:  .git/hooks/post-commit                                       │
-│ Action:   (bd-auto-sync &) 2>/dev/null                                 │
+│ Action:   (bd_auto_sync &) 2>/dev/null                                 │
 │ Behavior: Non-blocking background sync                                 │
 │ Log:      ~/.bmad/sync.log                                             │
 │                                                                         │
 │ Flow:                                                                   │
 │   1. Check if beads-sync exists → Skip if not                          │
 │   2. Check divergence (beads-sync ahead of main) → Skip if none        │
-│   3. Run bd-land silently in background                                │
+│   3. Run bd_land silently in background                                │
 │   4. Log results to ~/.bmad/sync.log                                   │
 │                                                                         │
 │ Result: Branches stay synced after every commit                        │
@@ -38,26 +38,26 @@
 │ LEVEL 2: PRE-PUSH HOOK (Interactive Check)                             │
 ├─────────────────────────────────────────────────────────────────────────┤
 │ Trigger:  .git/hooks/pre-push                                          │
-│ Action:   bd-auto-land || exit 1                                       │
+│ Action:   bd_auto_land || exit 1                                       │
 │ Config:   git config beads.auto-sync (warning|block|auto|off)          │
 │                                                                         │
 │ Flow by Mode:                                                           │
 │                                                                         │
 │   MODE: warning (default)                                              │
 │   ├─ Check divergence                                                  │
-│   ├─ If diverged: "Run bd-land? [y/N]"                                 │
-│   │   ├─ User says Y → bd-land → push continues                        │
+│   ├─ If diverged: "Run bd_land? [y/N]"                                 │
+│   │   ├─ User says Y → bd_land → push continues                        │
 │   │   └─ User says N → exit 1 → push blocked                           │
 │   └─ If synced: pass through                                           │
 │                                                                         │
 │   MODE: auto                                                            │
 │   ├─ Check divergence                                                  │
-│   ├─ If diverged: Auto-run bd-land → push continues                    │
+│   ├─ If diverged: Auto-run bd_land → push continues                    │
 │   └─ If synced: pass through                                           │
 │                                                                         │
 │   MODE: block                                                           │
 │   ├─ Check divergence                                                  │
-│   ├─ If diverged: "Push blocked. Run bd-land" → exit 1                 │
+│   ├─ If diverged: "Push blocked. Run bd_land" → exit 1                 │
 │   └─ If synced: pass through                                           │
 │                                                                         │
 │   MODE: off                                                             │
@@ -80,14 +80,14 @@
 │ LEVEL 3: HANDOVER SYNC (Mandatory)                                     │
 ├─────────────────────────────────────────────────────────────────────────┤
 │ Trigger:  Manual [HO] workflow Step 3                                  │
-│ Action:   bd-land (always execute, not conditional)                    │
+│ Action:   bd_land (always execute, not conditional)                    │
 │ Purpose:  Guarantee session-end sync                                   │
 │                                                                         │
 │ Flow:                                                                   │
-│   Step 1: bd-release <claim-id>  (release claims)                      │
+│   Step 1: bd_release <claim-id>  (release claims)                      │
 │   Step 2: git commit              (commit changes)                     │
-│   Step 3: bd-land                 (MANDATORY sync - always runs)       │
-│   Step 4: bd-preflight            (verify ready)                       │
+│   Step 3: bd_land                 (MANDATORY sync - always runs)       │
+│   Step 4: bd_preflight            (verify ready)                       │
 │   Step 5: git push                (push to remote)                     │
 │                                                                         │
 │ Result: Session ends with all branches guaranteed synced               │
@@ -113,7 +113,7 @@
         │   (default)  │                  │  (seamless)  │
         └──────────────┘                  └──────────────┘
                 │                                  │
-         Asks: "Run bd-land?"              Auto-syncs silently
+         Asks: "Run bd_land?"              Auto-syncs silently
          Before push                       No prompts
 
 
@@ -138,7 +138,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│                     bd-land: Three-Way Branch Sync                       │
+│                     bd_land: Three-Way Branch Sync                       │
 └──────────────────────────────────────────────────────────────────────────┘
 
     Step 1: Detect branches
@@ -198,22 +198,22 @@
          │
          ▼
     ┌──────────────────┐
-    │   bd-health      │  ← Run diagnostic check
+    │   bd_health      │  ← Run diagnostic check
     └──────────────────┘
          │
          ├─ Daemon not running? → bd daemon start
-         ├─ Worktree conflict? → bd-fix
-         ├─ Branch diverged? → bd-land
+         ├─ Worktree conflict? → bd_fix
+         ├─ Branch diverged? → bd_land
          └─ Merge conflict? → Manual resolution
          │
          ▼
     ┌──────────────────┐
-    │   bd-fix         │  ← Auto-fix attempt
+    │   bd_fix         │  ← Auto-fix attempt
     └──────────────────┘
          │
          ├─ Fix worktree branch
-         ├─ Run bd-land
-         └─ Verify with bd-preflight
+         ├─ Run bd_land
+         └─ Verify with bd_preflight
          │
          ▼
     Problem Resolved ✅
@@ -234,7 +234,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│              bd-auto-sync: Background Sync Implementation                │
+│              bd_auto_sync: Background Sync Implementation                │
 └──────────────────────────────────────────────────────────────────────────┘
 
     git commit -m "..."  →  Post-commit hook triggered
@@ -242,7 +242,7 @@
                                       ▼
                             ┌──────────────────────┐
                             │  Fork to background  │
-                            │  (bd-auto-sync &)    │
+                            │  (bd_auto_sync &)    │
                             └──────────────────────┘
                                       │
                     ┌─────────────────┴─────────────────┐
@@ -262,7 +262,7 @@
                             ahead > 0?                            ahead = 0?
                                     │                                   │
                                     ▼                                   ▼
-                            Run bd-land                          Skip (no-op)
+                            Run bd_land                          Skip (no-op)
                             (in background)                            │
                                     │                                   │
                                     ▼                                   │
@@ -333,7 +333,7 @@
 1. **Three levels** ensure branches stay synced at all times
 2. **Non-blocking** design doesn't interrupt workflow
 3. **Configurable** modes let users choose automation level
-4. **Backward compatible** - can disable with `bd-config-sync off`
+4. **Backward compatible** - can disable with `bd_config_sync off`
 5. **Well logged** - background sync logs to `~/.bmad/sync.log`
 6. **Tested** - 15 automated tests verify functionality
 

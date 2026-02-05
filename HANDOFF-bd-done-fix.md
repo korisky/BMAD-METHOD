@@ -8,7 +8,7 @@
 
 ## What Was Fixed
 
-The `bd-done` function now **properly closes all open tasks** when marking work as done.
+The `bd_done` function now **properly closes all open tasks** when marking work as done.
 
 ### Before (Broken)
 - ❌ Only created "Done: <key>" marker
@@ -46,8 +46,8 @@ source ~/.zshrc  # or restart your terminal
 # Check current open tasks
 bd list --type task --status open
 
-# Test bd-done on a key (replace with your actual epic/story key)
-bd-done "epic-2"
+# Test bd_done on a key (replace with your actual epic/story key)
+bd_done "epic-2"
 
 # Verify tasks are closed
 bd list --type task --status open  # Should show fewer/no tasks
@@ -67,7 +67,7 @@ If you have **existing stories/epics marked done in BMAD** but still have **open
 bd list --type task --status open
 
 # For each story/epic that's done in BMAD, run:
-bd-done "story-key-here"
+bd_done "story-key-here"
 ```
 
 ### Option B: Bulk Cleanup (Advanced)
@@ -80,9 +80,9 @@ cd /Users/roylic/GolandProjects/crypto-data-extend-system
 # View completed items in sprint status
 cat sprint-status.yaml | grep -A5 "status: done"
 
-# For each completed key, run bd-done
-bd-done "1-2-migrate"
-bd-done "epic-2"
+# For each completed key, run bd_done
+bd_done "1-2-migrate"
+bd_done "epic-2"
 # etc.
 ```
 
@@ -91,17 +91,17 @@ bd-done "epic-2"
 ## What This Fixes
 
 ### Issue
-When BMAD workflows completed code-review or retrospective phases, they called `bd-done` but it **didn't close existing open tasks**, leaving your agents confused about what work remained.
+When BMAD workflows completed code-review or retrospective phases, they called `bd_done` but it **didn't close existing open tasks**, leaving your agents confused about what work remained.
 
 ### Resolution
-Now when `bd-done "story-key"` runs:
+Now when `bd_done "story-key"` runs:
 1. **Closes all open tasks** containing "story-key"
 2. **Creates completion marker** for audit trail
 3. **Prints confirmation** showing which tasks were closed
 
 ### Example Output
 ```bash
-$ bd-done "1-2-auth"
+$ bd_done "1-2-auth"
   Closed: task-abc123
   Closed: task-def456
 ✅ Marked done: 1-2-auth
@@ -112,9 +112,9 @@ $ bd-done "1-2-auth"
 ## Key Changes in the Fixed Code
 
 ```bash
-bd-done() {
+bd_done() {
   local key="$1"
-  [ -z "$key" ] && echo "Usage: bd-done <story-key|epic-key>" && return 1
+  [ -z "$key" ] && echo "Usage: bd_done <story-key|epic-key>" && return 1
 
   # NEW: Close all open tasks containing this key
   bd search "$key" --status open --type task --format '{{.ID}}' --limit 0 2>/dev/null | \
@@ -145,7 +145,7 @@ bd-done() {
 
 2. **If story is "done" in BMAD but has open tasks in Beads:**
    ```bash
-   bd-done "story-key"
+   bd_done "story-key"
    ```
 
 3. **This should sync both systems** and resolve the confusion.
@@ -163,4 +163,4 @@ If the fix doesn't resolve your status inconsistencies:
 
 ---
 
-**Summary:** Just reload your shell, run `bd-done` on completed items, and the status inconsistency should be resolved. The fix is already in the BMAD codebase.
+**Summary:** Just reload your shell, run `bd_done` on completed items, and the status inconsistency should be resolved. The fix is already in the BMAD codebase.

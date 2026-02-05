@@ -30,13 +30,13 @@ BMAD (Formal Outputs):              Beads (Runtime & Coordination):
 
 ```bash
 # Quick operations
-alias bd-next='bd ready --pretty --limit 10'
-alias bd-halt='bd create --type blocker --priority 0 --title'
-alias bd-decision='bd create --type decision --priority 2 --title'
-alias bd-blocker='bd create --type blocker --priority 1 --title'
+alias bd_next='bd ready --pretty --limit 10'
+alias bd_halt='bd create --type blocker --priority 0 --title'
+alias bd_decision='bd create --type decision --priority 2 --title'
+alias bd_blocker='bd create --type blocker --priority 1 --title'
 
 # Work claiming (one command)
-bd-claim() {
+bd_claim() {
   local story="$1"
   local id=$(bd q "Working: $story" --type task --priority 1 --silent)
   bd update $id --status in_progress --notes "AGENT: $(whoami) | STARTED: $(date -Iseconds)"
@@ -44,13 +44,13 @@ bd-claim() {
 }
 
 # Release claim
-bd-release() {
+bd_release() {
   local id="$1"
   bd close $id --reason "Done"
 }
 
 # Check what's happening
-alias bd-status='bd ready --pretty && echo "---" && bd list --type blocker --status open'
+alias bd_status='bd ready --pretty && echo "---" && bd list --type blocker --status open'
 ```
 
 ---
@@ -61,17 +61,17 @@ alias bd-status='bd ready --pretty && echo "---" && bd list --type blocker --sta
 # 1. Beads auto-primes (hook)
 
 # 2. See everything at once
-bd-status
+bd_status
 # Shows: ready work + active blockers
 
 # 3. If picking a story, claim it
-bd-claim "1-2-user-auth"
+bd_claim "1-2-user-auth"
 
 # 4. Read BMAD files as needed
 # sprint-status.yaml, story file, etc.
 ```
 
-**One command (`bd-status`) replaces 4 manual checks.**
+**One command (`bd_status`) replaces 4 manual checks.**
 
 ---
 
@@ -86,7 +86,7 @@ bd update <id> --notes "AGENT: claude | STARTED: 2025-01-13"
 
 **After:**
 ```bash
-bd-claim "Story 1-2"  # One command, done
+bd_claim "Story 1-2"  # One command, done
 ```
 
 ---
@@ -95,19 +95,19 @@ bd-claim "Story 1-2"  # One command, done
 
 ### HALT Condition
 ```bash
-bd-halt "3 consecutive test failures in Story 1-2"
+bd_halt "3 consecutive test failures in Story 1-2"
 bd update <id> --notes "STORY: 1-2 | WORKFLOW: dev-story | LAST_ERROR: TypeError"
 ```
 
 ### Runtime Decision
 ```bash
-bd-decision "Use Redis for session storage"
+bd_decision "Use Redis for session storage"
 bd update <id> --notes "WHO: architect | WHY: Scale requirements | DOC: architecture.md"
 ```
 
 ### Blocker
 ```bash
-bd-blocker "Waiting on API credentials from DevOps"
+bd_blocker "Waiting on API credentials from DevOps"
 bd update <id> --notes "AFFECTS: Story 1-3 | OWNER: devops | ETA: unknown"
 ```
 
@@ -117,23 +117,23 @@ bd update <id> --notes "AFFECTS: Story 1-3 | OWNER: devops | ETA: unknown"
 
 ```bash
 # 1. Release any claims
-bd-release <claim-id>
+bd_release <claim-id>
 
 # 2. Check if ready to push
-bd-preflight
+bd_preflight
 
 # 3. If ❌ Not ready: sync branches first
-bd-land
-bd-preflight  # verify again
+bd_land
+bd_preflight  # verify again
 
 # 4. If ✅ Ready: push
 git push
 ```
 
 **Key Commands:**
-- `bd-preflight` - Check if ready to push (always run this)
-- `bd-land` - Sync branches (beads-sync → main → current)
-- `bd-fix` - Auto-fix common issues
+- `bd_preflight` - Check if ready to push (always run this)
+- `bd_land` - Sync branches (beads-sync → main → current)
+- `bd_fix` - Auto-fix common issues
 
 ---
 
@@ -141,9 +141,9 @@ git push
 
 | Priority | Use For | Alias |
 |----------|---------|-------|
-| 0 | HALT, critical | `bd-halt` |
-| 1 | Claims, urgent blockers | `bd-blocker` |
-| 2 | Decisions, actions | `bd-decision` |
+| 0 | HALT, critical | `bd_halt` |
+| 1 | Claims, urgent blockers | `bd_blocker` |
+| 2 | Decisions, actions | `bd_decision` |
 | 3-4 | Low/backlog | manual |
 
 ---
@@ -209,16 +209,16 @@ Add to all agents via `injections.yaml`:
 
 ```yaml
 # Session start
-- "Run `bd-status` to see ready work and blockers"
-- "Run `bd-claim {story}` before starting work"
+- "Run `bd_status` to see ready work and blockers"
+- "Run `bd_claim {story}` before starting work"
 
 # During work
-- "Runtime decisions: `bd-decision {title}`"
-- "Blockers: `bd-blocker {title}`"
-- "HALT conditions: `bd-halt {title}` immediately"
+- "Runtime decisions: `bd_decision {title}`"
+- "Blockers: `bd_blocker {title}`"
+- "HALT conditions: `bd_halt {title}` immediately"
 
 # Session end
-- "Release claim: `bd-release {id}`"
+- "Release claim: `bd_release {id}`"
 - "Git commit triggers auto-sync via hooks"
 - "Push before saying done"
 ```
@@ -229,13 +229,13 @@ Add to all agents via `injections.yaml`:
 
 | Say | Alias/Command |
 |-----|---------------|
-| "what's ready?" | `bd-next` |
-| "status" | `bd-status` |
-| "claim story X" | `bd-claim "X"` |
-| "release claim" | `bd-release <id>` |
-| "HALT" | `bd-halt "reason"` |
-| "that's a decision" | `bd-decision "title"` |
-| "that's a blocker" | `bd-blocker "title"` |
+| "what's ready?" | `bd_next` |
+| "status" | `bd_status` |
+| "claim story X" | `bd_claim "X"` |
+| "release claim" | `bd_release <id>` |
+| "HALT" | `bd_halt "reason"` |
+| "that's a decision" | `bd_decision "title"` |
+| "that's a blocker" | `bd_blocker "title"` |
 
 ---
 
@@ -243,24 +243,24 @@ Add to all agents via `injections.yaml`:
 
 ```
 SESSION START:
-  bd-status              # See ready work + blockers
-  bd-claim "story"       # Claim before starting
+  bd_status              # See ready work + blockers
+  bd_claim "story"       # Claim before starting
 
 DURING WORK:
   (commit normally - hooks auto-sync beads)
-  bd-halt "..."          # Critical failure (P0)
-  bd-blocker "..."       # External blocker
-  bd-decision "..."      # Runtime decision
+  bd_halt "..."          # Critical failure (P0)
+  bd_blocker "..."       # External blocker
+  bd_decision "..."      # Runtime decision
 
 SESSION END:
-  bd-release <id>        # Release claim
-  bd-preflight           # Check if ready to push
-  (if ❌) bd-land        # Sync branches
+  bd_release <id>        # Release claim
+  bd_preflight           # Check if ready to push
+  (if ❌) bd_land        # Sync branches
   (if ✅) git push       # Done!
 
 TROUBLESHOOTING:
-  bd-fix                 # Auto-fix common issues
-  bd-help                # Show all commands
+  bd_fix                 # Auto-fix common issues
+  bd_help                # Show all commands
 ```
 
 ---
@@ -269,8 +269,8 @@ TROUBLESHOOTING:
 
 | Before (v4) | After (v5) | Improvement |
 |-------------|------------|-------------|
-| 4 manual `bd list` checks | `bd-status` (1 command) | 75% fewer commands |
-| 3 commands to claim | `bd-claim` (1 alias) | 66% fewer commands |
+| 4 manual `bd list` checks | `bd_status` (1 command) | 75% fewer commands |
+| 3 commands to claim | `bd_claim` (1 alias) | 66% fewer commands |
 | Manual `bd sync` | Git hooks auto-sync | Zero manual sync |
 | Long command strings | Short aliases | Faster typing |
 | Check then cross-reference | `bd ready` does it | Built-in intelligence |
@@ -291,4 +291,4 @@ A comprehensive review of the current integration identified critical gaps that 
 
 ---
 
-`bd help` | `bd-status` | `bd-next`
+`bd help` | `bd_status` | `bd_next`

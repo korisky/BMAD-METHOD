@@ -197,7 +197,7 @@
         <output>⚠️ **Beads Coordination Reminder**
 
           This story is not claimed in Beads. To prevent concurrent edit conflicts:
-          - Run `bd-claim "{{story_key}}"` to claim this story
+          - Run `bd_claim "{{story_key}}"` to claim this story
           - Or continue without claiming (for solo work)
 
           💡 Claims help coordinate multi-agent/developer work.
@@ -205,7 +205,7 @@
         <ask>Claim story with Beads? [y/n] (default: n for solo work)</ask>
 
         <check if="user chooses 'y' or 'yes'">
-          <action>Run `bd-claim "{{story_key}}"` to claim the story</action>
+          <action>Run `bd_claim "{{story_key}}"` to claim the story</action>
           <action>Store claim ID for later release</action>
           <output>✓ Story claimed: {{story_key}}</output>
         </check>
@@ -397,7 +397,7 @@
 
       <!-- BEADS: Sync review status -->
       <check if="bd command is available">
-        <action>Run `bd-action "Story {{story_key}} ready for code review"`</action>
+        <action>Run `bd_action "Story {{story_key}} ready for code review"`</action>
       </check>
     </check>
 
@@ -456,7 +456,7 @@
 
     <!-- BEADS INTEGRATION: Release story claim -->
     <check if="bd command is available AND story claim was created in step 3.5">
-      <action>Run `bd-release {{claim_id}}` to release the story claim</action>
+      <action>Run `bd_release {{claim_id}}` to release the story claim</action>
       <output>✓ Beads claim released for {{story_key}}</output>
     </check>
 

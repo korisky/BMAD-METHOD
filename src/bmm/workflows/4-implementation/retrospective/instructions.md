@@ -161,7 +161,7 @@ Bob (Scrum Master): "Perfect. Epic {{epic_number}} is complete and ready for ret
     <action>Save file, preserving ALL comments and structure</action>
     <output>✅ Epic epic-{{epic_number}} marked as done in sprint-status.yaml</output>
     <check if="bd command is available">
-      <action>Run `bd-done "epic-{{epic_number}}"`</action>
+      <action>Run `bd_done "epic-{{epic_number}}"`</action>
       <output>✅ Epic synced to Beads</output>
     </check>
   </check>
@@ -906,7 +906,7 @@ Bob (Scrum Master): "These agreements are how we're committing to work different
 
 Elena (Junior Dev): "I like agreement 2 - that would've saved me on Story {{difficult_story_num}}."
 
-Bob (Scrum Master): "For team coordination, consider adding these action items to Beads using \`bd-action\`. This helps track progress across sprints."
+Bob (Scrum Master): "For team coordination, consider adding these action items to Beads using \`bd_action\`. This helps track progress across sprints."
 
 ═══════════════════════════════════════════════════════════
 🚀 EPIC {{next_epic_num}} PREPARATION TASKS:
@@ -1361,7 +1361,7 @@ Status: {{previous_status}} → done
 
   <!-- BEADS: Sync retrospective completion -->
   <check if="bd command is available">
-    <action>Run `bd-done "epic-{{epic_number}}-retrospective"`</action>
+    <action>Run `bd_done "epic-{{epic_number}}-retrospective"`</action>
   </check>
 </check>
 
