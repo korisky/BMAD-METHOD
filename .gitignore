@@ -26,6 +26,7 @@ Thumbs.db
 
 # Development tools and configs
 .prettierrc
+.idea/
 
 # AI assistant files
 CLAUDE.md
@@ -35,7 +36,8 @@ cursor
 .mcp.json
 CLAUDE.local.md
 .serena/
-.claude/settings.local.json
+.claude/
+.agents/
 
 z*/
 
