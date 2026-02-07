@@ -9,6 +9,40 @@ This document explains the git workflow for projects using both BMAD (Build, Mea
 
 ---
 
+## Story → Beads Task Sync
+
+After adding AI-Review follow-ups to story files during code review, sync them to Beads:
+
+```bash
+bd_sync_story implementation_artifacts/story-1-2-auth.md
+# Parses: - [ ] [AI-Review][HIGH|MEDIUM|LOW] Description
+# Creates matching Beads tasks with correct priorities
+# Output: "Created N Beads task(s) from 1-2-auth"
+```
+
+**Why sync to Beads?**
+- Fresh agents run `bd ready`, not grep story files
+- Ensures action items are visible in runtime coordination
+- Prevents dual-tracking mistakes
+
+**Priority mapping:**
+- `[HIGH]` → Priority 0 (halt)
+- `[MEDIUM]` → Priority 1 (blocker)
+- `[LOW]` → Priority 2 (action)
+
+**What gets synced:**
+- Only unchecked `- [ ]` items (completed `[x]` items are skipped)
+- Only items tagged with `[AI-Review]` prefix
+- Story key automatically added to task notes
+
+**Verify tasks created:**
+```bash
+bd ready
+# Shows newly created tasks
+```
+
+---
+
 ## The Challenge: Beads Daemon + Git Worktrees
 
 ### How Beads Works with Git

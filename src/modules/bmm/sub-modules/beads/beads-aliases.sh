@@ -115,6 +115,67 @@ bd_done() {
 }
 
 # ============================================
+# STORY → BEADS SYNC
+# ============================================
+
+# Sync story file AI-Review items to Beads tasks
+# Usage: bd_sync_story <story-file>
+# Parses: - [ ] [AI-Review][HIGH|MEDIUM|LOW] Description
+# Creates matching Beads tasks with correct priorities
+bd_sync_story() {
+  local file="$1"
+
+  # Validate file exists
+  if [ -z "$file" ]; then
+    echo "Usage: bd_sync_story <story-file>"
+    echo "  Parses AI-Review checkboxes and creates Beads tasks"
+    echo "  Example: bd_sync_story implementation_artifacts/story-1-2-auth.md"
+    return 1
+  fi
+
+  if [ ! -f "$file" ]; then
+    echo "Error: File not found: $file"
+    return 1
+  fi
+
+  # Extract story key from filename (e.g., story-1-2-auth.md → 1-2-auth)
+  local story_key=$(basename "$file" .md | sed 's/^story-//')
+  local count=0
+
+  # Parse file for AI-Review checkboxes only
+  while IFS= read -r line; do
+    # Match: - [ ] [AI-Review][SEVERITY] Description
+    if echo "$line" | grep -qE '^\s*-\s+\[ \]\s+\[AI-Review\]'; then
+
+      # Extract severity and map to priority
+      local priority=2
+      if echo "$line" | grep -q '\[HIGH\]'; then
+        priority=0
+      elif echo "$line" | grep -q '\[MEDIUM\]'; then
+        priority=1
+      fi
+
+      # Extract description (remove tags)
+      local desc=$(echo "$line" | sed 's/^[[:space:]]*-[[:space:]]*\[[[:space:]]\][[:space:]]*//' \
+        | sed 's/\[AI-Review\]\[HIGH\][[:space:]]*//' \
+        | sed 's/\[AI-Review\]\[MEDIUM\][[:space:]]*//' \
+        | sed 's/\[AI-Review\]\[LOW\][[:space:]]*//')
+
+      # Create Beads task silently (continue on error)
+      local task_id=$(bd create "$desc" --type task --priority "$priority" \
+        --notes "Story: $story_key" --silent 2>/dev/null)
+
+      if [ -n "$task_id" ]; then
+        ((count++))
+      fi
+    fi
+  done < "$file"
+
+  echo "Created $count Beads task(s) from $story_key"
+  echo "Verify with: bd ready"
+}
+
+# ============================================
 # QUICK CREATE COMMANDS
 # ============================================
 

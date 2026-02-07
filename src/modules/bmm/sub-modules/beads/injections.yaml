@@ -26,6 +26,9 @@ injections:
       - `bd_blocker "{title}"` → external blocker
       - `bd_decision "{title}"` → runtime decision
 
+      **Story → Beads Sync:**
+      - After adding AI-Review items to story file: `bd_sync_story {story-file}`
+
       **Session End (ALWAYS):**
       1. `bd_release {id}` → release claims
       2. `bd_preflight` → check if ready to push
@@ -94,6 +97,12 @@ injections:
       2. If ❌: `bd_land` then `bd_preflight` again
       3. If ✅: `git push`
       <!-- END BEADS INTEGRATION -->
+
+  # Code review workflow reminder
+  - file: "_bmad/bmm/workflows/4-implementation/code-review/instructions.xml"
+    point: "code-review-beads-sync"
+    requires: "beads-enabled"
+    content: "After adding Review Follow-ups: `bd_sync_story {story-file}`"
 
 # Shell aliases to install
 aliases:
