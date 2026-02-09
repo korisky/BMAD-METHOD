@@ -39,13 +39,13 @@ git merge upstream/main  # Or: git merge v6.0.0-Beta.5
 
 # Resolve conflicts following curation rules (see below)
 # KEEP: core framework, workflows, agents, tools, tests, docs
-# DISCARD: .claude/skills, .augment, .coderabbit, release workflows
+# DISCARD: .claude/skills, .augment, .coderabbit.yaml, release workflows
 ```
 
 **Step 3: Validate sync branch**
 ```bash
 npm test  # Must pass
-npx . install  # Test installer in clean project (see testing section below)
+npx /Users/roylic/VSCodeProjects/BMAD-METHOD-Beads-Integration install  # Test installer in clean project
 git log --oneline main..HEAD  # Review changes
 ```
 
@@ -96,7 +96,7 @@ git worktree remove .worktrees/upstream-sync-$(date +%Y-%m-%d)
 ### ALWAYS DISCARD (Upstream Operational)
 - `.claude/skills/` - Release automation skills (untracked)
 - `.augment/` - Code review guidelines (untracked)
-- `.coderabbit.yaml` - CodeRabbit config
+- `.coderabbit.yaml` - CodeRabbit config (keep untracked/local-only)
 - `.github/PULL_REQUEST_TEMPLATE.md` - PR template
 - `.github/workflows/coderabbit-review.yaml` - Review workflow
 - `.github/workflows/manual-release.yaml` - Release automation
