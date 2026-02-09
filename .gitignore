@@ -42,6 +42,9 @@ CLAUDE.local.md
 
 z*/
 
+# Git worktrees (isolated workspaces)
+.worktrees/
+
 _bmad
 _bmad-output
 .clinerules
