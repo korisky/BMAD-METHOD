@@ -37,6 +37,7 @@ cursor
 CLAUDE.local.md
 .serena/
 .claude/
+.claude/skills/
 .agents/
 
 z*/
@@ -45,6 +46,11 @@ _bmad
 _bmad-output
 .clinerules
 .augment
+.augment/
+# Upstream code review infrastructure (optional for fork)
+.coderabbit.yaml
+.github/PULL_REQUEST_TEMPLATE.md
+.github/workflows/coderabbit-review.yaml
 .crush
 .cursor
 .iflow
