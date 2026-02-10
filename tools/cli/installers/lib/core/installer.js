@@ -667,6 +667,7 @@ class Installer {
     this.moduleManager.setBmadFolderName(BMAD_FOLDER_NAME);
     this.moduleManager.setCoreConfig(moduleConfigs.core || {});
     this.moduleManager.setCustomModulePaths(customModulePaths);
+    this.moduleManager.setEnableBeads(this.enableBeads); // Pass Beads flag to module manager
     this.ideManager.setBmadFolderName(BMAD_FOLDER_NAME);
 
     // Tool selection will be collected after we determine if it's a reinstall/update/new install
@@ -2160,6 +2161,7 @@ class Installer {
     // Compile agents using the same compiler as modules
     const { ModuleManager } = require('../modules/manager');
     const moduleManager = new ModuleManager();
+    moduleManager.setEnableBeads(this.enableBeads || false); // Pass Beads flag
     await moduleManager.compileModuleAgents(sourcePath, targetPath, 'core', bmadDir, this);
 
     // Process agent files to inject activation block
@@ -2328,6 +2330,7 @@ class Installer {
       // Recompile agents (#1133)
       const { ModuleManager } = require('../modules/manager');
       const moduleManager = new ModuleManager();
+      moduleManager.setEnableBeads(this.enableBeads || false); // Pass Beads flag
       await moduleManager.compileModuleAgents(sourcePath, targetPath, 'core', bmadDir, this);
       await this.processAgentFiles(targetPath, 'core');
     }
@@ -2585,6 +2588,11 @@ class Installer {
       // Initialize module manager
       const moduleManager = new ModuleManager();
       moduleManager.setBmadFolderName(path.basename(bmadDir));
+
+      // Detect if Beads is enabled by checking for .beads directory
+      const beadsDir = path.join(projectDir, '.beads');
+      const enableBeads = await fs.pathExists(beadsDir);
+      moduleManager.setEnableBeads(enableBeads);
 
       let totalAgentCount = 0;
 

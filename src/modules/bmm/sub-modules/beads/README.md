@@ -44,6 +44,54 @@ Aliases work automatically in git hooks without sourcing.
 > A `bd_` command is provided by this installer (source `.beads/lib/bmad-aliases.sh` to load).
 > For native Beads help run `bd help`; for BMAD integration help run `bd_help`.
 
+## Updating Existing Installations
+
+If you already have BMAD + Beads installed and want to get the latest integration features (agent Beads awareness, intelligent story discovery, HALT detection), re-run the installer:
+
+```bash
+# From project root
+bash /path/to/bmad-repo/src/modules/bmm/sub-modules/beads/install.sh
+
+# Or via BMAD installer
+npx bmad-method install  # Select "Enable Beads integration"
+```
+
+**What gets updated (idempotent, safe):**
+- ✅ `.beads/AGENTS.md` - Agent guidance with latest protocol documentation
+- ✅ `.beads/lib/bmad-aliases.sh` - Latest BMAD commands
+- ✅ Git hooks - Updated sync automation
+- ✅ Documentation - Latest workflow guides
+
+**What gets preserved:**
+- ✅ Your custom notes in `.beads/AGENTS.md` (outside managed blocks)
+- ✅ Your Beads database (`.beads/beads.db`)
+- ✅ Your git history and branches
+- ✅ Your sync configuration (`bd_config_sync` settings)
+
+**Managed blocks pattern:**
+
+The installer uses managed blocks in `.beads/AGENTS.md`:
+```markdown
+<!-- BMAD-BEADS:START -->
+... (this content is managed and will be updated) ...
+<!-- BMAD-BEADS:END -->
+
+## Your Custom Notes
+... (this content is never touched) ...
+```
+
+**Verification:**
+```bash
+# Check AGENTS.md was updated
+cat .beads/AGENTS.md | grep "BMAD-BEADS:START" -A 10
+
+# Verify only one managed block (no duplicates)
+grep -c "BMAD-BEADS:START" .beads/AGENTS.md  # Should output: 1
+
+# Check version
+cat .beads/.bmad-version
+```
+
 ## Quick Reference
 
 ```bash

@@ -45,6 +45,105 @@ These sync **issue metadata only** - not code commits
 
 ---
 
+## Agent Beads Integration
+
+**Agents automatically check Beads** for context when executing workflows. This makes Beads a primary coordination system, not an afterthought.
+
+### Story Discovery (Automatic)
+
+When you trigger story-targeted workflows like `[DS]` (dev story) or `[CR]` (code review), agents use the `resolve_story_target` protocol to intelligently discover which story to work on:
+
+**Sources checked (in order):**
+1. **Sprint-status.yaml** (if exists) - Official planned work
+2. **User conversation** - "finished 2-1" → suggests 2-2
+3. **Beads ready/in-progress** - `bd ready`, `bd list --status=in_progress`
+4. **HALT detection** - `bd_halts` checks for priority 0 blockers
+
+**Ranking algorithm:**
+```
+Priority order:
+1. User explicit request (current conversation)
+2. Sprint-status with preferred statuses
+3. User context inferred next story
+4. Beads high-priority ready work (P0-P1)
+5. Beads in-progress work
+6. Sprint-status other statuses
+7. Beads medium-priority work (P2-P3)
+8. Available stories (fallback)
+```
+
+**Agent presents:**
+- Single match → Suggests with confirmation
+- Multiple matches → Shows top 3 with sources/statuses
+- No matches → Manual selection with helpful prompts
+
+### Agent Critical Actions (Automatic)
+
+All agents have Beads-aware critical actions when Beads is detected:
+
+**All Agents:**
+- Session start: Run `bd_status` to see ready work + blockers
+- During work: Track decisions, blockers, HALTs
+- Session end: Release claims, sync branches
+
+**Dev Agent:**
+- Always claims story before starting: `bd_claim "{story-key}"`
+- Checks for HALTs before work
+- Tracks mid-implementation discoveries as decisions
+- Releases claim when done: `bd_release <id>`
+
+**PM Agent:**
+- Tracks scope changes AFTER PRD done: `bd_decision "Scope: {change}"`
+- ADRs remain in architecture.md (NOT Beads)
+
+**Scrum Master Agent:**
+- Tracks cross-story dependencies: `bd_blocker "Dep: Story {B} needs {A}"`
+- Tracks sprint deferrals: `bd_decision "Defer: {story}"`
+- Story status remains in sprint-status.yaml (NOT Beads)
+
+**Architect Agent:**
+- Tracks post-architecture tech pivots: `bd_decision "Tech: {change}"`
+- Tracks technical blockers: `bd_blocker "{blocker}"`
+- ADRs remain in architecture.md (NOT Beads)
+
+### What Agents Track in Beads
+
+✅ **DO track in Beads:**
+- Work claims (prevent concurrent edits)
+- Runtime decisions (outside formal workflows)
+- External blockers
+- HALT conditions (priority 0)
+- Cross-story dependencies
+- Persistent action items
+
+❌ **DON'T track in Beads:**
+- Phase completion → workflow-status.yaml
+- ADRs → architecture.md
+- Story status → sprint-status.yaml
+- Task progress → story file checkboxes
+- Code review findings → story file
+
+### Agent Guidance File
+
+Detailed guidance for agents is maintained in `.beads/AGENTS.md`. This file is automatically created/updated by the installer and contains:
+
+- Story discovery process documentation
+- HALT detection explanation
+- Beads commands reference
+- Agent-specific guidance
+- Priority scale
+- Notes format
+
+**Updating guidance:**
+```bash
+# Re-run installer to update .beads/AGENTS.md
+bash /path/to/beads/install.sh
+
+# Your custom notes outside managed blocks are preserved
+```
+
+---
+
 ## Future: Phase 2 (Multi-Agent Ready)
 
 **When to switch:** Architecture validated, want parallel Claude sessions.

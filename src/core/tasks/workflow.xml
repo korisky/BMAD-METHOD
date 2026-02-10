@@ -120,7 +120,7 @@
     <execution>
       <tag>action - Required action to perform</tag>
       <tag>action if="condition" - Single conditional action (inline, no closing tag needed)</tag>
-      <tag>check if="condition"&gt;...&lt;/check&gt; - Conditional block wrapping multiple items (closing tag required)</tag>
+      <tag>check if="condition">...&lt;/check> - Conditional block wrapping multiple items (closing tag required)</tag>
       <tag>ask - Get user input (ALWAYS wait for response before continuing)</tag>
       <tag>goto - Jump to another step</tag>
       <tag>invoke-workflow - Call another workflow</tag>
@@ -218,6 +218,287 @@
         </step>
       </flow>
 
+    </protocol>
+
+    <protocol name="resolve_story_target" desc="Intelligently discover story target using sprint-status, Beads context, and conversation history">
+      <objective>Resolve which story file the workflow should target by checking sprint-status.yaml, Beads ready/in-progress work, user conversation context, and asking for clarification only when needed</objective>
+
+      <critical>Use this at the start of story-targeted workflows (code-review, dev-story, etc.) to avoid blindly asking "which story?"</critical>
+
+      <inputs>
+        <param name="sprint_status_path" desc="Path to sprint-status.yaml file" required="true"/>
+        <param name="story_dir" desc="Directory containing story files" required="true"/>
+        <param name="preferred_statuses" desc="Comma-separated statuses to prioritize (e.g., 'review,in-progress,ready-for-dev')" default="in-progress,ready-for-dev"/>
+        <param name="workflow_type" desc="Type of workflow calling this (e.g., 'code-review', 'dev-story')" default="generic"/>
+      </inputs>
+
+      <outputs>
+        <variable name="story_path" desc="Resolved absolute path to story file"/>
+        <variable name="story_key" desc="Extracted story key (e.g., '2-2-user-auth')"/>
+        <variable name="selection_source" desc="Where story came from: sprint-status, beads, user-context, explicit, manual"/>
+        <variable name="selection_candidates" desc="List of all candidates considered (for transparency)"/>
+      </outputs>
+
+      <flow>
+        <step n="1" title="Check if story already provided explicitly">
+          <check if="{{story_path}} variable is already set AND file exists">
+            <action>Verify the file at {{story_path}} exists and is readable</action>
+            <action>Extract story_key from filename (e.g., "2-2-user-auth" from "2-2-user-auth-feature.md")</action>
+            <action>Set selection_source = "explicit"</action>
+            <output>✓ Using provided story: {{story_path}}</output>
+            <action>RETURN story_path, story_key, selection_source (skip remaining steps)</action>
+          </check>
+
+          <note>If user provided story path via workflow parameter or earlier in conversation, use it immediately</note>
+        </step>
+
+        <step n="2" title="Gather story candidates from all available sources">
+          <action>Initialize candidates = [] (list of candidate objects with: path, key, title, source, priority, status)</action>
+
+          <substep n="2a" title="Source 1 - Sprint Status (High Priority)">
+            <action>Check if {{sprint_status_path}} exists</action>
+            <check if="sprint-status.yaml exists">
+              <action>Load FULL file: {{sprint_status_path}}</action>
+              <action>Parse development_status map (YAML dict)</action>
+              <action>Filter entries where value in preferred_statuses (ready-for-dev, in-progress, review)</action>
+              <action>Iterate map IN ORDER (YAML preserves insertion order)</action>
+              <iterate>For each (story_key, status) in filtered map:</iterate>
+              <action>Resolve story file: {{story_dir}}/{story_key}*.md (glob)</action>
+              <check if="file found">
+                <action>Add candidate: {path, key, source=sprint-status, priority=HIGH, status}</action>
+              </check>
+            </check>
+            <note>Sprint-status stories are high priority because they're officially planned work</note>
+          </substep>
+
+          <substep n="2b" title="Source 2 - User Conversation Context">
+            <action>Scan recent conversation messages (last 10 turns) for story mentions</action>
+            <patterns>
+              - "finished 2-1" → infer next story is 2-2
+              - "working on story 3-5" → current context is 3-5
+              - "review story 1-3" → explicit request for 1-3
+              - "just completed authentication" → search sprint-status for auth story
+            </patterns>
+            <check if="story mentions found">
+              <action>Parse story keys using patterns: X-Y, X-Y-slug, "Story X-Y", epic/story numbers</action>
+              <action>Infer next story if user mentioned completing a story (e.g., "done 2-1" → suggest "2-2")</action>
+              <iterate>For each inferred/mentioned story:</iterate>
+              <action>Resolve story file path using glob: {{story_dir}}/{story_key}*.md</action>
+              <check if="story file found">
+                <action>Add to candidates with source="user-context", priority=HIGH</action>
+              </check>
+            </check>
+            <note>User context is high priority because it reflects current intent</note>
+          </substep>
+
+          <substep n="2c" title="Source 3 - Beads (if available)">
+            <action>Check if Beads is available: run 'command -v bd' and check if .beads/ directory exists</action>
+            <check if="Beads available">
+              <critical>Check for HALT conditions FIRST before proceeding</critical>
+              <action>Run: bd_halts (or `bd list --status=halt --priority=0`)</action>
+              <check if="HALTs found">
+                <output>🚨 HALT: Priority 0 blockers detected:
+                  {{beads_halts_list}}
+                </output>
+                <ask>HALT conditions present. These must be addressed before continuing.
+
+Options:
+1. Address blockers now
+2. Continue anyway (not recommended)
+3. Cancel workflow
+
+How would you like to proceed?</ask>
+                <check if="user chooses 'address blockers' or 'cancel'">
+                  <action>HALT workflow - return empty story_path to signal stop</action>
+                  <action>RETURN with story_path=null, selection_source="halted"</action>
+                </check>
+              </check>
+
+              <action>Run: bd ready --limit 20 to get ready work items</action>
+              <action>Run: bd list --status=in_progress --type=task to get in-progress work</action>
+              <action>Parse Beads output for story references (patterns: X-Y, X-Y-slug, "Story X-Y")</action>
+
+              <iterate>For each Beads work item:</iterate>
+              <action>Extract story key from item title/description</action>
+              <action>Resolve story file path using glob: {{story_dir}}/{story_key}*.md</action>
+              <check if="story file found">
+                <action>Add to candidates with source="beads", priority={beads_priority}, status={beads_status}</action>
+                <note>Priority: 0=HALT, 1=HIGH, 2-3=MED</note>
+              </check>
+            </check>
+            <check if="Beads NOT available">
+              <note>Beads not available - skipping Beads source (not an error)</note>
+            </check>
+          </substep>
+
+          <substep n="2d" title="Source 4 - All Available Stories (Fallback)">
+            <check if="candidates list is empty">
+              <action>Glob pattern: {{story_dir}}/*.md (find all story files)</action>
+              <action>Parse each filename for story key</action>
+              <iterate>For each story file:</iterate>
+              <action>Add to candidates with source="available", priority=LOW</action>
+              <note>These are fallback options if no other sources found relevant stories</note>
+            </check>
+          </substep>
+
+          <action>Log total candidates found: {{candidates.length}} candidates from {{unique_sources_count}} sources</action>
+        </step>
+
+        <step n="3" title="Rank candidates by relevance and priority">
+          <action>Sort candidates using ranking algorithm:</action>
+
+          <ranking-algorithm>
+            <priority-order>
+              1. User explicit request in current conversation (source=user-context + recent mention)
+              2. Sprint-status with preferred_statuses (source=sprint-status + status match)
+              3. User context inferred next story (source=user-context + inferred)
+              4. Beads high-priority ready work (source=beads + priority 0-1 + status=ready)
+              5. Beads in-progress work (source=beads + status=in_progress)
+              6. Sprint-status other statuses (source=sprint-status + other status)
+              7. Beads medium-priority work (source=beads + priority 2-3)
+              8. Available stories (source=available)
+            </priority-order>
+
+            <tie-breaker>If multiple candidates have same priority, prefer lower story number (e.g., 2-2 before 2-3)</tie-breaker>
+          </ranking-algorithm>
+
+          <action>Select top candidate and top 3 candidates for presentation</action>
+          <action>Store all candidates in selection_candidates for transparency</action>
+        </step>
+
+        <step n="4" title="Present candidates and resolve story selection">
+          <check if="single strong candidate (top candidate significantly higher priority than others)">
+            <output>📋 Suggested story: {{candidate_story_key}} - {{candidate_title}}
+Source: {{candidate_source}}
+Status: {{candidate_status}}
+Path: {{candidate_path}}
+</output>
+            <ask>Continue with this story? (y/n)</ask>
+            <check if="user confirms (y/yes/enter)">
+              <action>Set story_path = candidate_path</action>
+              <action>Set story_key = candidate_key</action>
+              <action>Set selection_source = candidate_source</action>
+              <action>RETURN story_path, story_key, selection_source, selection_candidates</action>
+            </check>
+            <check if="user declines (n/no)">
+              <goto step="4" anchor="manual_selection"/>
+            </check>
+          </check>
+
+          <check if="multiple candidates (2+ candidates)">
+            <output>📋 Found {{candidates_count}} story candidates:
+
+{{#each top_candidates}}
+{{@index + 1}}. **{{story_key}}** - {{story_title}}
+   Source: {{source}} | Status: {{status}}
+   Path: {{story_path}}
+{{/each}}
+
+{{#if more_candidates_exist}}
+... and {{remaining_count}} more
+{{/if}}
+</output>
+            <ask>Which story would you like to work on?
+- Enter number (1-{{candidates_count}})
+- Enter story key (e.g., "2-2")
+- Enter story file path
+- Or 'list' to see all {{total_count}} candidates
+- Or 'none' to skip
+</ask>
+            <action>Parse user choice:</action>
+            <check if="numeric choice (1-N)">
+              <action>Select candidate at index (choice - 1)</action>
+              <action>Set story_path, story_key, selection_source="user-choice"</action>
+              <action>RETURN story_path, story_key, selection_source, selection_candidates</action>
+            </check>
+            <check if="story key (e.g., '2-2', '2-2-auth')">
+              <action>Find candidate matching story_key</action>
+              <action>Set story_path, story_key, selection_source="user-choice"</action>
+              <action>RETURN story_path, story_key, selection_source, selection_candidates</action>
+            </check>
+            <check if="file path">
+              <action>Verify file exists, extract story_key</action>
+              <action>Set story_path, story_key, selection_source="manual"</action>
+              <action>RETURN story_path, story_key, selection_source, selection_candidates</action>
+            </check>
+            <check if="'list'">
+              <action>Display all candidates with full details</action>
+              <action>LOOP back to ask for choice</action>
+            </check>
+            <check if="'none'">
+              <action>RETURN story_path=null, selection_source="skipped"</action>
+            </check>
+          </check>
+
+          <check if="no candidates found">
+            <anchor name="manual_selection"/>
+            <output>ℹ️ No story candidates found in:
+- Sprint-status.yaml ({{sprint_status_searched}})
+- Beads ready/in-progress ({{beads_searched}})
+- User conversation context
+
+Available story files: {{available_story_count}} in {{story_dir}}/
+</output>
+            <ask>Which story would you like to work on?
+- Provide story file path (e.g., {{story_dir}}/2-2-*.md)
+- Or story key (e.g., "2-2")
+- Or 'list' to see all available stories
+</ask>
+            <action>Resolve user input to story_path (glob match if needed)</action>
+            <check if="story file found">
+              <action>Set story_path, story_key, selection_source="manual"</action>
+              <action>RETURN story_path, story_key, selection_source, selection_candidates</action>
+            </check>
+            <check if="story file NOT found">
+              <error>Story file not found. Please check the path or story key.</error>
+              <action>LOOP back to ask again</action>
+            </check>
+          </check>
+        </step>
+
+        <step n="5" title="Return resolved story information">
+          <action>Store final values in workflow variables:</action>
+          <output>
+            ✓ Story resolved: {{story_key}}
+            ✓ File: {{story_path}}
+            ✓ Source: {{selection_source}}
+            ✓ Candidates considered: {{selection_candidates.length}}
+          </output>
+          <note>Workflow can now proceed with story_path loaded and ready</note>
+        </step>
+      </flow>
+
+      <error-handling>
+        <case name="Sprint-status malformed">
+          <action>Log warning: "Could not parse sprint-status.yaml - skipping sprint source"</action>
+          <action>Continue with other sources (graceful degradation)</action>
+        </case>
+        <case name="Beads command fails">
+          <action>Log warning: "Beads command failed - skipping Beads source"</action>
+          <action>Continue with other sources (graceful degradation)</action>
+        </case>
+        <case name="No sources available">
+          <action>Fall back to manual_selection (ask user directly)</action>
+        </case>
+      </error-handling>
+
+      <examples>
+        <example scenario="Sprint-status has story 2-2 as 'in-progress'">
+          Result: Suggests story 2-2 immediately (high priority sprint match)
+        </example>
+        <example scenario="User just said 'finished story 2-1'">
+          Result: Infers next story is 2-2, adds to candidates with high priority
+        </example>
+        <example scenario="Beads shows 3 ready stories, sprint-status has 2 in-progress">
+          Result: Ranks sprint-status higher, shows top 3 candidates for choice
+        </example>
+        <example scenario="No sprint-status, no Beads, user said nothing">
+          Result: Lists all available story files, asks for manual selection
+        </example>
+        <example scenario="Beads has priority 0 HALT">
+          Result: Warns about HALT, asks if user wants to address or continue anyway
+        </example>
+      </examples>
     </protocol>
   </protocols>
 

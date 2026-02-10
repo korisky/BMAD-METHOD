@@ -166,7 +166,63 @@ EOF
   fi
 fi
 
-# 6. Install workflow documentation
+# 6. Update AGENTS.md with managed Beads integration guidance (idempotent)
+_update_agents_md() {
+  local agents_md=".beads/AGENTS.md"
+  local template_file="$SCRIPT_DIR/AGENTS.md.template"
+
+  # If template doesn't exist, skip (shouldn't happen, but be defensive)
+  if [ ! -f "$template_file" ]; then
+    echo "  ⚠️  AGENTS.md template not found, skipping"
+    return
+  fi
+
+  # Extract the managed block content from template
+  local managed_content
+  managed_content=$(sed -n '/<!-- BMAD-BEADS:START -->/,/<!-- BMAD-BEADS:END -->/p' "$template_file")
+
+  if [ ! -f "$agents_md" ]; then
+    # File doesn't exist - create from template
+    echo "  Creating .beads/AGENTS.md..."
+    cp "$template_file" "$agents_md"
+    echo "  ✅ Created .beads/AGENTS.md"
+  else
+    # File exists - update managed block (idempotent)
+    if grep -q "<!-- BMAD-BEADS:START -->" "$agents_md" 2>/dev/null; then
+      # Managed block exists - replace it
+      echo "  Updating Beads integration guidance in .beads/AGENTS.md..."
+
+      # Create temp file with updated content
+      # Strategy: Keep everything before START marker, insert new block, keep everything after END marker
+      local temp_block="/tmp/bmad_managed_$$.txt"
+      echo "$managed_content" > "$temp_block"
+
+      # Use sed to read temp file instead of inline replacement
+      sed '/<!-- BMAD-BEADS:START -->/,/<!-- BMAD-BEADS:END -->/{
+        /<!-- BMAD-BEADS:START -->/{
+          r '"$temp_block"'
+          d
+        }
+        /<!-- BMAD-BEADS:END -->/!d
+      }' "$agents_md" > "$agents_md.tmp" && mv "$agents_md.tmp" "$agents_md"
+
+      rm -f "$temp_block"
+      echo "  ✅ Updated managed block in .beads/AGENTS.md"
+    else
+      # No managed block - append it
+      echo "  Adding Beads integration guidance to .beads/AGENTS.md..."
+      echo "" >> "$agents_md"
+      echo "$managed_content" >> "$agents_md"
+      echo "  ✅ Added managed block to .beads/AGENTS.md"
+    fi
+  fi
+}
+
+echo ""
+echo "Updating agent guidance..."
+_update_agents_md
+
+# 7. Install workflow documentation
 echo ""
 echo "Installing documentation..."
 mkdir -p "$PROJECT_ROOT/docs"
@@ -181,7 +237,7 @@ if [ -f "$SCRIPT_DIR/bmad-workflow-guide.md" ]; then
   echo "  ✅ bmad-workflow-guide.md → docs/"
 fi
 
-# 7. Summary
+# 8. Summary
 echo ""
 echo "=== Installation Complete ==="
 echo ""

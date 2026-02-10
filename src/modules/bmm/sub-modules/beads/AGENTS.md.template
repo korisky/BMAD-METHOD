@@ -1,193 +1,173 @@
-# BMAD + Beads Agent Instructions
+# Agent Guidance
 
-> **Context Recovery**: Run `bd prime` after compaction, clear, or new session
-> Hooks auto-call this in Claude Code when .beads/ detected
+This file provides guidance to BMAD agents when working with Beads integration.
 
-> **Workflow Guide**: See `docs/bmad-workflow-guide.md` for strategic workflow patterns
-> (phases, branch strategy, ADRs, sprints, session handover)
+<!-- BMAD-BEADS:START -->
+## Story-Targeted Workflow Behavior
 
----
+When workflows (e.g., code review, dev story) ask "which story?", they follow this intelligent discovery process:
 
-## Required Reading (Before Starting)
+### Story Discovery Process
 
-**ALWAYS** review these files in order:
-1. `project-context.md` - Project-specific rules and patterns
-2. `docs/bmad-workflow-guide.md` - Current development workflow
-3. `sprint-status.yaml` - Current sprint and story status
-4. This file - Beads coordination commands
+1. **Check sprint-status.yaml first** (if exists)
+   - Looks for stories with status: `ready-for-dev`, `in-progress`, `review`
+   - These are officially planned work items
 
----
+2. **Check Beads ready/in-progress** (if Beads available)
+   - Queries: `bd ready --limit 20`, `bd list --status=in_progress`
+   - Parses story keys from Beads work items
 
-## The Split: Who Owns What
+3. **Check user conversation context**
+   - Infers next story from conversation (e.g., "finished 2-1" → suggests 2-2)
+   - Looks for explicit story mentions
 
+4. **Rank candidates intelligently**
+   - Priority order:
+     1. User explicit request (current conversation)
+     2. Sprint-status with preferred statuses
+     3. User context inferred next story
+     4. Beads high-priority ready work (P0-P1)
+     5. Beads in-progress work
+     6. Sprint-status other statuses
+     7. Beads medium-priority work (P2-P3)
+     8. Available stories (fallback)
+
+5. **Present candidates for confirmation**
+   - Single strong candidate → suggests with confirmation
+   - Multiple candidates → shows top 3 with sources/statuses
+   - No candidates → prompts for manual selection
+
+### HALT Detection
+
+⚠️ **Priority 0 Blockers** are checked automatically before proceeding with dev work.
+
+If HALT conditions exist (via `bd_halts`), workflow will:
+- Warn about priority 0 blockers
+- Ask if you want to address blockers or continue anyway
+- Not recommended to continue without addressing
+
+### Beads Commands for Agents
+
+**Session Lifecycle:**
+- `bd_status` - See ready work + blockers (run at session start)
+- `bd ready --limit 20` - See ready work items
+- `bd list --status=in_progress` - See in-progress work
+- `bd_halts` - Check for priority 0 blockers (HALT conditions)
+- `bd_who` - See who's working on what
+
+**During Work:**
+- `bd_claim "{story-key}"` - Claim story before starting (prevents concurrent edits)
+- `bd_decision "{title}"` - Track runtime decisions outside formal workflows
+- `bd_blocker "{title}"` - Track external blockers
+- `bd_halt "{reason}"` - Mark HALT condition (priority 0)
+- `bd_action "{title}"` - Track persistent action items
+
+**Session End (Handover):**
+- `bd_release <id>` - Release claim when done
+- `bd_land` - Sync branches (beads-sync → main → current)
+- `bd_preflight` - Verify ready to push
+- `git push` - Push when preflight shows ✅
+
+### Agent-Specific Guidance
+
+**Dev Agent:**
+- **ALWAYS claim story before starting:** `bd_claim "{story-key}"`
+- Check for HALTs before starting work
+- Track mid-implementation discoveries as decisions
+- On HALT: `bd_halt "{reason}"` immediately
+- Task checkboxes remain in story file (NOT in Beads)
+
+**PM Agent:**
+- Check `bd_status` to see blockers and decisions
+- Track scope changes AFTER PRD done: `bd_decision "Scope: {change}"`
+- ADRs go in architecture.md (BMAD), NOT in Beads
+- Phase progress tracked in workflow-status.yaml, NOT Beads
+
+**Scrum Master Agent:**
+- Run `bd_status` at session start to see ready work
+- Track cross-story dependencies: `bd_blocker "Dep: Story {B} needs {A}"`
+- Track sprint deferrals: `bd_decision "Defer: {story}"`
+- Track retrospective action items: `bd_action "{item}"`
+- Story status remains in sprint-status.yaml, NOT Beads
+
+**Architect Agent:**
+- Run `bd_status` to see technical decisions
+- Track post-architecture technology pivots: `bd_decision "Tech: {change}"`
+- Track technical blockers: `bd_blocker "{blocker}"`
+- ADRs captured during architecture workflow, NOT in Beads
+
+### What NOT to Track in Beads
+
+Beads is for **runtime coordination**, NOT formal documentation:
+
+- ❌ Phase completion (use workflow-status.yaml)
+- ❌ ADRs (use architecture.md)
+- ❌ Story status (use sprint-status.yaml)
+- ❌ Task progress (use story file checkboxes)
+- ❌ Code review findings (use story file)
+- ❌ Retrospective content (use retro docs)
+
+### What TO Track in Beads
+
+- ✅ Work claims (prevent concurrent edits)
+- ✅ Runtime decisions (outside formal workflows)
+- ✅ External blockers
+- ✅ HALT conditions (priority 0)
+- ✅ Cross-story dependencies
+- ✅ Persistent action items
+
+### Priority Scale
+
+When creating Beads items, use numeric priorities (not P0/P1/etc):
+
+- **0**: HALT conditions, critical blockers
+- **1**: Work claims, urgent blockers
+- **2**: Decisions, action items
+- **3**: Low priority
+- **4**: Backlog
+
+### Notes Format
+
+When adding notes to Beads items:
 ```
-BMAD (Formal Outputs):              Beads (Runtime & Coordination):
-├── Documents                       ├── Work claims (bd_claim)
-├── sprint-status.yaml              ├── Runtime decisions (bd_decision)
-├── workflow-status.yaml            ├── Blockers (bd_blocker)
-├── ADRs (architecture.md)          ├── HALTs (bd_halt)
-├── Task checkboxes (story files)   ├── Cross-story dependencies
-└── Code review findings            └── Action items (bd_action)
+WHO: {agent} | WHAT: {item} | WHY: {reason} | DOC: {bmad_doc_path}
 ```
 
-**Rule**: Don't duplicate. BMAD handles formal outputs. Beads handles runtime state.
+Example:
+```
+WHO: Dev Agent | WHAT: Chose PostgreSQL over MongoDB | WHY: Better transaction support | DOC: docs/architecture.md
+```
 
----
+### Git Hooks (Auto-Sync)
 
-## Session Start
+Git hooks automatically handle branch synchronization:
 
+- **post-commit**: Background sync after commits (non-blocking)
+- **pre-push**: Prompts to sync before push (configurable)
+
+Configure auto-sync mode:
 ```bash
-bd_status              # Ready work + blockers (one command)
-bd_claim "story-key"   # Claim before starting work
+bd_config_sync <mode>
 ```
 
-## During Work
+Modes:
+- `warning` - Ask before syncing (default)
+- `auto` - Auto-sync silently
+- `block` - Block push if not synced
+- `off` - Disable auto-sync
 
+### Troubleshooting
+
+**Something went wrong?**
 ```bash
-bd_decision "title"    # Runtime decision (outside workflow)
-bd_blocker "title"     # External blocker
-bd_halt "reason"       # Critical failure (priority 0)
-bd_action "title"      # Action item
+bd_fix  # Auto-recovery for common issues
 ```
 
-## Session End
+**For complex recovery:**
+See `docs/beads-git-workflow.md` for detailed git recovery procedures.
 
-Run the `[HO]` handover workflow to safely end your session:
+<!-- BMAD-BEADS:END -->
 
-```bash
-[HO]                   # Run handover workflow
-```
+## Additional Notes
 
-Or manually:
-
-```bash
-bd_release <id>        # Release claim (if you claimed)
-git add <files>        # Stage changes
-git commit -m "..."    # Hooks auto-sync Beads
-bd_land                # Sync all branches (beads-sync → main → current)
-git push               # Push to remote
-bd_status              # Report next ready work
-```
-
-> **Note**: The `[HO]` workflow handles all of this automatically. Use it to ensure proper branch sync.
-
----
-
-## Priority Scale (Numbers Only)
-
-| Priority | Use For | Quick Create |
-|----------|---------|--------------|
-| 0 | HALT, critical failures | `bd_halt "reason"` |
-| 1 | Work claims, urgent blockers | `bd_blocker "title"` |
-| 2 | Decisions, action items | `bd_decision "title"` |
-| 3-4 | Low/backlog | manual `bd create` |
-
----
-
-## Quick Reference
-
-| Command | What It Does |
-|---------|--------------|
-| `bd_status` | Ready work + blockers |
-| `bd_next` | Ready work only |
-| `bd_claim X` | Claim story before starting |
-| `bd_release X` | Release claim |
-| `bd_halt X` | Create HALT (priority 0) |
-| `bd_decision X` | Create runtime decision |
-| `bd_blocker X` | Create blocker |
-| `bd_action X` | Create action item |
-| `bd_who` | See who's working on what |
-| `bd_config_sync` | Configure auto-sync mode |
-| `bd_help` | Show all commands |
-
----
-
-## What NOT to Track in Beads
-
-These belong in BMAD files:
-- Story status → `sprint-status.yaml`
-- Phase progress → `workflow-status.yaml`
-- ADRs → `architecture.md`
-- Task checkboxes → story files
-- Code review findings → story files
-
----
-
-## What TO Track in Beads
-
-- **Work claims** - Prevent concurrent edits
-- **Runtime decisions** - Choices made OUTSIDE formal workflows
-- **External blockers** - Waiting on APIs, approvals, etc.
-- **HALTs** - Critical failures that must persist
-- **Cross-story deps** - Story B needs Story A
-- **Action items** - Cross-epic visibility
-
----
-
-## Role-Specific Guidance
-
-### Developer (DEV)
-- Run `bd_claim` before starting any story work
-- Focus on implementation quality following `project-context.md`
-- Run `[HO]` handover before ending session
-- Auto-sync: post-commit hooks keep branches synced automatically
-- Configure sync mode: `bd_config_sync <mode>` (warning/block/auto/off)
-
-### Scrum Master (SM)
-- Track cross-story dependencies via `bd_blocker "Dep: Story B needs A"`
-- Sprint deferrals: `bd_decision "Defer: {story} to next sprint"`
-- Run `[HO]` handover before ending session
-
-### Project Manager (PM)
-- ADRs go in `architecture.md` (BMAD) - NOT in Beads
-- Scope/priority changes: `bd_decision "Scope: {change}"`
-- Phase progress tracked in `workflow-status.yaml`
-
-### Architect (ARCH)
-- ADRs captured in `architecture.md` during workflow
-- Technology pivots: `bd_decision "Tech: {change}"`
-- Pattern changes: `bd_decision "Pattern: {change}"`
-
----
-
-## Troubleshooting
-
-**"I don't know what pattern to use"**
-→ Check `project-context.md` first
-→ Look for similar existing code
-
-**"Branch sync failed"**
-→ Run `git worktree list` to check conflicts
-→ See `docs/beads-git-workflow.md` for recovery
-
-**"bd_land failed"**
-→ Check if branches have diverged
-→ Manual sync: merge `beads-sync` → `main` → your branch
-
-**"Can't checkout to main"**
-→ Another worktree has `main` checked out
-→ Run: `git -C .git/beads-worktrees/beads-sync checkout beads-sync`
-
-**"Auto-sync not working?"**
-→ Check background sync log: `tail ~/.bmad/sync.log`
-→ Verify daemon running: `bd stats`
-→ Check config mode: `bd_config_sync`
-
----
-
-## Trigger Phrases
-
-| Say | Command |
-|-----|---------|
-| "what's ready?" | `bd_next` |
-| "status" | `bd_status` |
-| "claim story X" | `bd_claim "X"` |
-| "release claim" | `bd_release <id>` |
-| "HALT" | `bd_halt "reason"` |
-| "that's a decision" | `bd_decision "title"` |
-| "that's a blocker" | `bd_blocker "title"` |
-| "who's working?" | `bd_who` |
-
----
-
-`bd_help` | `bd_status` | `bd_next`
+You can add your own agent guidance notes below. The section above (between BMAD-BEADS markers) will be automatically updated when the Beads integration is updated.

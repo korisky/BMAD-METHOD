@@ -50,6 +50,52 @@ class ModuleManager {
   }
 
   /**
+   * Set the enableBeads flag for template processing
+   * @param {boolean} enableBeads - Whether Beads integration is enabled
+   */
+  setEnableBeads(enableBeads) {
+    this.enableBeads = enableBeads;
+  }
+
+  /**
+   * Inject Beads critical actions into agent critical_actions
+   * @param {string} agentName - Name of the agent (e.g., 'dev', 'pm')
+   * @param {Array|null} existingActions - Existing critical_actions from customizations
+   * @param {string} agentYamlPath - Path to agent YAML file for reading original
+   * @returns {Promise<Array>} Merged critical actions
+   */
+  async injectBeadsCriticalActions(agentName, existingActions, agentYamlPath) {
+    const { getSourcePath } = require('../../../lib/project-root');
+
+    // If customizations exist, don't inject (user has customized)
+    if (existingActions) {
+      return existingActions;
+    }
+
+    // Read original agent YAML first (single file read optimization)
+    const yamlContent = await fs.readFile(agentYamlPath, 'utf8');
+    const agentYaml = yaml.parse(yamlContent);
+    const originalActions = agentYaml?.agent?.critical_actions || [];
+
+    // Read the beads-integration.yaml
+    const beadsIntegrationPath = getSourcePath('utility', 'agent-components', 'beads-integration.yaml');
+    if (!(await fs.pathExists(beadsIntegrationPath))) {
+      // Beads integration file not found, return original actions
+      return originalActions;
+    }
+
+    const beadsConfig = yaml.parse(await fs.readFile(beadsIntegrationPath, 'utf8'));
+    const injectableActions = beadsConfig.injectable_critical_actions || {};
+
+    // Get all_agents actions and role-specific actions
+    const allAgentsActions = injectableActions.all_agents || [];
+    const roleActions = injectableActions[agentName] || [];
+
+    // Merge: original + all_agents + role-specific
+    return [...originalActions, ...allAgentsActions, ...roleActions];
+  }
+
+  /**
    * Set custom module paths for priority lookup
    * @param {Map<string, string>} customModulePaths - Map of module ID to source path
    */
@@ -958,6 +1004,18 @@ class ModuleManager {
           if (customizeData.prompts && customizeData.prompts.length > 0) {
             answers.prompts = customizeData.prompts;
           }
+        }
+
+        // Add enableBeads flag for template processing (always include, even if false)
+        answers.enableBeads = this.enableBeads || false;
+
+        // Inject Beads critical actions if enableBeads is true and not customized
+        if (this.enableBeads && !customizedFields.includes('critical_actions')) {
+          answers.critical_actions = await this.injectBeadsCriticalActions(
+            agentName,
+            answers.critical_actions || null,
+            sourceYamlPath
+          );
         }
 
         // Check if agent has sidecar

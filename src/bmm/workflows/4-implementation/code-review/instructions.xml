@@ -16,10 +16,23 @@
 
 
   <step n="1" goal="Load story and discover changes">
-    <action>Use provided {{story_path}} or ask user which story file to review</action>
-    <action>Read COMPLETE story file</action>
-    <action>Set {{story_key}} = extracted key from filename (e.g., "1-2-user-authentication.md" → "1-2-user-authentication") or story
-      metadata</action>
+    <!-- Use intelligent story discovery protocol -->
+    <invoke-protocol name="resolve_story_target">
+      <param name="sprint_status_path">{{sprint_status}}</param>
+      <param name="story_dir">{{story_dir}}</param>
+      <param name="preferred_statuses">review,in-progress,done</param>
+      <param name="workflow_type">code-review</param>
+    </invoke-protocol>
+
+    <!-- Protocol returns: {{story_path}}, {{story_key}}, {{selection_source}} -->
+    <check if="story_path is null">
+      <output>⚠️ No story selected - cannot proceed with code review</output>
+      <action>Exit workflow</action>
+    </check>
+
+    <output>✓ Reviewing story: {{story_key}} (source: {{selection_source}})</output>
+
+    <action>Read COMPLETE story file from {{story_path}}</action>
     <action>Parse sections: Story, Acceptance Criteria, Tasks/Subtasks, Dev Agent Record → File List, Change Log</action>
 
     <!-- Discover actual changes via git -->
