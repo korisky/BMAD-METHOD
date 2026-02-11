@@ -118,6 +118,86 @@ bd_done() {
 # STORY → BEADS SYNC
 # ============================================
 
+# ============================================
+# STORY SYNC HELPERS (Internal)
+# ============================================
+
+# Normalize checkbox line for hashing
+# Input: "  -  [ ]  [AI-Review][HIGH]  Description  "
+# Output: "[AI-Review][HIGH] Description"
+_normalize_line() {
+  local line="$1"
+  echo "$line" | sed -e 's/^[[:space:]]*//' \
+                      -e 's/^-[[:space:]]*\[[[:space:]]\][[:space:]]*//' \
+                      -e 's/[[:space:]]*$//' | \
+                 tr -s ' ' | \
+                 sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
+# Generate short hash (first 16 chars of SHA-256)
+_generate_hash() {
+  local normalized="$1"
+  echo "$normalized" | shasum -a 256 | cut -c1-16
+}
+
+# Check if task already exists in Beads
+# Returns: 0 (exists), 1 (not exists)
+_task_exists() {
+  local story_key="$1"
+  local hash="$2"
+  local description="$3"
+
+  # Method 1: Check by hash (new method)
+  local query="Story: $story_key | Hash: $hash"
+  local found=$(bd search "$query" --status open --type task --limit 1 2>/dev/null)
+
+  if [ -n "$found" ]; then
+    return 0  # Exists (hash match)
+  fi
+
+  # Method 2: Fallback for legacy tasks (no hash in notes)
+  # This provides backward compatibility with existing tasks
+  found=$(bd search "$description" --status open --type task 2>/dev/null | \
+          grep "Story: $story_key" | head -1)
+
+  if [ -n "$found" ]; then
+    # Found legacy task - auto-upgrade with hash
+    local task_id=$(echo "$found" | awk '{print $1}')
+    bd update "$task_id" --notes "Story: $story_key | Hash: $hash" 2>/dev/null
+    return 0  # Exists (upgraded)
+  fi
+
+  return 1  # Not exists
+}
+
+# Extract priority from checkbox line (refactored)
+_extract_priority() {
+  local line="$1"
+  local priority=2  # Default: LOW
+
+  if echo "$line" | grep -q '\[HIGH\]'; then
+    priority=0
+  elif echo "$line" | grep -q '\[MEDIUM\]'; then
+    priority=1
+  fi
+
+  echo "$priority"
+}
+
+# Extract description from checkbox line (refactored)
+_extract_description() {
+  local line="$1"
+  echo "$line" | sed -e 's/^[[:space:]]*-[[:space:]]*\[[[:space:]]\][[:space:]]*//' \
+                     -e 's/\[AI-Review\][[:space:]]*//' \
+                     -e 's/\[HIGH\][[:space:]]*//' \
+                     -e 's/\[MEDIUM\][[:space:]]*//' \
+                     -e 's/\[LOW\][[:space:]]*//' \
+                     -e 's/^[[:space:]]*//' \
+                     -e 's/[[:space:]]*$//' | \
+                 tr -s ' ' | \
+                 sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
 # Sync story file AI-Review items to Beads tasks
 # Usage: bd_sync_story <story-file>
 # Parses: - [ ] [AI-Review][HIGH|MEDIUM|LOW] Description
@@ -140,39 +220,46 @@ bd_sync_story() {
 
   # Extract story key from filename (e.g., story-1-2-auth.md → 1-2-auth)
   local story_key=$(basename "$file" .md | sed 's/^story-//')
-  local count=0
+  local count_created=0
+  local count_skipped=0
+
+  echo "Syncing story: $story_key"
 
   # Parse file for AI-Review checkboxes only
   while IFS= read -r line; do
     # Match: - [ ] [AI-Review][SEVERITY] Description
     if echo "$line" | grep -qE '^\s*-\s+\[ \]\s+\[AI-Review\]'; then
 
-      # Extract severity and map to priority
-      local priority=2
-      if echo "$line" | grep -q '\[HIGH\]'; then
-        priority=0
-      elif echo "$line" | grep -q '\[MEDIUM\]'; then
-        priority=1
+      # Extract priority and description using helper functions
+      local priority=$(_extract_priority "$line")
+      local desc=$(_extract_description "$line")
+
+      # Generate hash for idempotency
+      local normalized=$(_normalize_line "$line")
+      local short_hash=$(_generate_hash "$normalized")
+
+      # Check if already synced
+      if _task_exists "$story_key" "$short_hash" "$desc"; then
+        echo "  [skip] $desc"
+        ((count_skipped++))
+        continue
       fi
 
-      # Extract description (remove tags)
-      local desc=$(echo "$line" | sed 's/^[[:space:]]*-[[:space:]]*\[[[:space:]]\][[:space:]]*//' \
-        | sed 's/\[AI-Review\]\[HIGH\][[:space:]]*//' \
-        | sed 's/\[AI-Review\]\[MEDIUM\][[:space:]]*//' \
-        | sed 's/\[AI-Review\]\[LOW\][[:space:]]*//')
-
-      # Create Beads task silently (continue on error)
+      # Create Beads task with hash in notes
+      local notes="Story: $story_key | Hash: $short_hash"
       local task_id=$(bd create "$desc" --type task --priority "$priority" \
-        --notes "Story: $story_key" --silent 2>/dev/null)
+        --notes "$notes" --silent 2>/dev/null)
 
       if [ -n "$task_id" ]; then
-        ((count++))
+        echo "  [new] $task_id: $desc"
+        ((count_created++))
       fi
     fi
   done < "$file"
 
-  echo "Created $count Beads task(s) from $story_key"
-  echo "Verify with: bd ready"
+  echo ""
+  echo "Summary: Created $count_created, Skipped $count_skipped tasks from $story_key"
+  echo "Verify: bd ready"
 }
 
 # ============================================

@@ -20,6 +20,35 @@ bd_sync_story implementation_artifacts/story-1-2-auth.md
 # Output: "Created N Beads task(s) from 1-2-auth"
 ```
 
+### Idempotency Guarantees
+
+`bd_sync_story` is idempotent - running it multiple times is safe:
+
+```bash
+# First run: Creates tasks
+bd_sync_story story-1-2-auth.md
+# Output: Created 5, Skipped 0
+
+# Second run: Skips existing tasks
+bd_sync_story story-1-2-auth.md
+# Output: Created 0, Skipped 5
+```
+
+**How it works:**
+- Each task is tagged with a content hash in notes: `Story: 1-2-auth | Hash: a3f8d9e1c2b4a5f6`
+- Hash is based on normalized checkbox content: `[AI-Review][PRIORITY] Description`
+- Running sync again detects existing tasks by querying Beads for the hash
+- Only new/changed items are synced
+
+**When tasks are re-created:**
+- Description changed → different hash → new task
+- Priority changed → different hash → new task
+- Task was manually deleted → story file is source of truth → re-created
+
+**When tasks are skipped:**
+- Exact match found (same hash in Beads)
+- Whitespace-only changes (normalized before hashing)
+
 **Why sync to Beads?**
 - Fresh agents run `bd ready`, not grep story files
 - Ensures action items are visible in runtime coordination
@@ -765,6 +794,102 @@ git stash
 git checkout dev
 git -C .git/beads-worktrees/beads-sync checkout beads-sync
 git checkout main
+```
+
+---
+
+## Troubleshooting Story Sync
+
+### Duplicate Tasks Created
+
+**Symptom:** Multiple tasks with same description
+
+**Causes:**
+- Ran `bd_sync_story` on legacy project (before idempotency was added in v0.0.4)
+- Story file was renamed (different story key = different tasks)
+- Tasks were closed, then sync ran again (re-creates them)
+
+**Fix:**
+```bash
+# Find duplicates
+bd search "your description" --status open
+
+# Close duplicates manually
+bd close bd-2a bd-2b --reason "duplicate"
+
+# Or delete them
+bd delete bd-2a bd-2b
+```
+
+### Tasks Not Being Created
+
+**Symptom:** `bd_sync_story` says "Skipped N" but you don't see the tasks
+
+**Cause:** Tasks exist but were closed or deleted
+
+**Check:**
+```bash
+# View all tasks for a story (including closed)
+bd search "Story: 1-2-auth"
+
+# View only open tasks
+bd search "Story: 1-2-auth" --status open
+
+# Reopen if needed
+bd reopen bd-2a
+
+# Or delete to allow re-sync
+bd delete bd-2a
+```
+
+### False Positives (Legitimate Tasks Skipped)
+
+**Symptom:** Modified a task description in story file, but sync still skips it
+
+**Cause:** Hash is based on normalized content. If you only changed whitespace or formatting, hash remains the same.
+
+**Fix:**
+```bash
+# Option 1: Delete the old task to allow re-sync
+bd delete bd-2a
+
+# Option 2: Manually update the task
+bd update bd-2a --title "new description"
+
+# Option 3: Change the actual content (not just formatting)
+# Edit story file with substantive change, then sync
+```
+
+### Reset Sync State
+
+**Use case:** Clean slate, re-sync everything from scratch
+
+**Method:**
+```bash
+# Delete all tasks for a story
+bd search "Story: 1-2-auth" --status open --format '{{.ID}}' | xargs bd delete
+
+# Re-sync from story file
+bd_sync_story story-1-2-auth.md
+# Output: Created N, Skipped 0
+```
+
+### Legacy Tasks (No Hash)
+
+**Symptom:** Old tasks (created before v0.0.4) don't have hashes in notes
+
+**What happens:**
+- First sync after upgrade: Uses description fallback, finds legacy tasks
+- Automatically upgrades them by adding hash to notes
+- Subsequent syncs use hash-based detection
+
+**No action needed** - automatic upgrade happens transparently.
+
+**Manual verification:**
+```bash
+# Check if task has hash
+bd show bd-2a --format '{{.Notes}}'
+# Should show: "Story: 1-2-auth | Hash: a3f8d9e1c2b4a5f6"
 ```
 
 ---
