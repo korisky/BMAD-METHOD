@@ -166,7 +166,7 @@ Migration is successful when:
 When implementing migration:
 - `install.sh` - Fresh installation (project-local only)
 - `beads-aliases.sh` - Function definitions
-- `beads-git-workflow.md` - Workflow documentation
+- `beads-reference.md` - Workflow documentation
 - This file - Migration requirements
 
 ---

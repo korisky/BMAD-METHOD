@@ -48,15 +48,11 @@ If HALT conditions exist (via `bd_halts`), workflow will:
 
 ### Beads Commands for Agents
 
-**Session Lifecycle:**
-- `bd_status` - See ready work + blockers (run at session start)
-- `bd ready --limit 20` - See ready work items
-- `bd list --status=in_progress` - See in-progress work
-- `bd_halts` - Check for priority 0 blockers (HALT conditions)
-- `bd_who` - See who's working on what
+**Session Start (RUN FIRST):**
+- `bd_session_start` - Validate env, check HALTs, show ready work + sync status
+- `bd_claim "{story-key}"` - Claim story before starting (prevents concurrent edits)
 
 **During Work:**
-- `bd_claim "{story-key}"` - Claim story before starting (prevents concurrent edits)
 - `bd_decision "{title}"` - Track runtime decisions outside formal workflows
 - `bd_blocker "{title}"` - Track external blockers
 - `bd_halt "{reason}"` - Mark HALT condition (priority 0)
@@ -66,32 +62,32 @@ If HALT conditions exist (via `bd_halts`), workflow will:
 - `bd_release <id>` - Release claim when done
 - `bd_land` - Sync branches (beads-sync → main → current)
 - `bd_preflight` - Verify ready to push
-- `git push` - Push when preflight shows ✅
+- `git push` - Push when preflight shows all green
 
 ### Agent-Specific Guidance
 
 **Dev Agent:**
-- **ALWAYS claim story before starting:** `bd_claim "{story-key}"`
-- Check for HALTs before starting work
+- **ALWAYS** `bd_session_start` then `bd_claim "{story-key}"` before coding
+- Check for HALTs before starting work — resolve or escalate
 - Track mid-implementation discoveries as decisions
 - On HALT: `bd_halt "{reason}"` immediately
 - Task checkboxes remain in story file (NOT in Beads)
 
 **PM Agent:**
-- Check `bd_status` to see blockers and decisions
+- `bd_session_start` to see blockers, decisions, scope state
 - Track scope changes AFTER PRD done: `bd_decision "Scope: {change}"`
 - ADRs go in architecture.md (BMAD), NOT in Beads
 - Phase progress tracked in workflow-status.yaml, NOT Beads
 
 **Scrum Master Agent:**
-- Run `bd_status` at session start to see ready work
+- `bd_session_start` at session start to see ready work + HALTs
 - Track cross-story dependencies: `bd_blocker "Dep: Story {B} needs {A}"`
 - Track sprint deferrals: `bd_decision "Defer: {story}"`
 - Track retrospective action items: `bd_action "{item}"`
 - Story status remains in sprint-status.yaml, NOT Beads
 
 **Architect Agent:**
-- Run `bd_status` to see technical decisions
+- `bd_session_start` to see technical blockers and decisions
 - Track post-architecture technology pivots: `bd_decision "Tech: {change}"`
 - Track technical blockers: `bd_blocker "{blocker}"`
 - ADRs captured during architecture workflow, NOT in Beads
@@ -164,7 +160,7 @@ bd_fix  # Auto-recovery for common issues
 ```
 
 **For complex recovery:**
-See `docs/beads-git-workflow.md` for detailed git recovery procedures.
+See `docs/beads-reference.md` for detailed git recovery procedures.
 
 <!-- BMAD-BEADS:END -->
 

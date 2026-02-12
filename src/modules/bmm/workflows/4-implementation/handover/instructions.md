@@ -1,13 +1,14 @@
 # Handover Workflow Instructions
 
 > **Purpose:** End-of-session procedure to sync all branches, release claims, and ensure work is safely pushed.
-> For complex git recovery scenarios, see `docs/beads-git-workflow.md`.
+> For complex git recovery scenarios, see `docs/beads-reference.md`.
 
 ---
 
 ## Prerequisites
 
 Before running handover:
+
 - All work for this session should be complete or at a stable stopping point
 - Tests should pass (if applicable)
 - Changes should be staged and ready to commit (or already committed)
@@ -50,6 +51,7 @@ bd_preflight
 ```
 
 This checks:
+
 - ✅ Working tree clean
 - ✅ Branches synced (beads-sync → main)
 - ✅ No open claims
@@ -65,7 +67,7 @@ git push
 ### Step 6: Report Next Ready Work (Optional)
 
 ```bash
-bd_status
+bd_session_start
 ```
 
 ---
@@ -104,10 +106,12 @@ bd_fix
 ```
 
 This handles common issues like:
+
 - Worktree on wrong branch
 - Branch sync needed
 
 **Note:** With auto-sync enabled (default), branches should stay in sync automatically:
+
 - Post-commit hook: Background sync after commits
 - Pre-push hook: Prompts to sync before push
 - Configure with: `bd_config_sync <mode>` (warning/block/auto/off)
@@ -115,11 +119,13 @@ This handles common issues like:
 **If bd_fix doesn't work, manual recovery:**
 
 1. **Check worktree status:**
+
    ```bash
    git worktree list
    ```
 
 2. **Free up branches if needed:**
+
    ```bash
    git -C .git/beads-worktrees/beads-sync checkout beads-sync
    ```
@@ -134,13 +140,14 @@ This handles common issues like:
    git push origin <your-branch>
    ```
 
-For complex recovery, see `docs/beads-git-workflow.md`.
+For complex recovery, see `docs/beads-reference.md`.
 
 ---
 
 ## Handover Complete
 
 After successful handover:
+
 - All branches are synced
 - Claims are released
 - Changes are pushed to remote

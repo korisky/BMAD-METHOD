@@ -93,30 +93,22 @@ EOF
 
 # 5. Install hooks (if in git repo)
 if [ -n "$HOOK_DIR" ]; then
-  # Pre-commit: Beads shim only (no BMAD extension needed)
+  # Pre-commit: Minimal Beads shim (fallback for when bd hooks install hasn't run)
   echo ""
   echo "Installing pre-commit hook..."
   HOOK_FILE="$HOOK_DIR/pre-commit"
 
   if _has_beads_shim "$HOOK_FILE"; then
-    echo "  ✅ Beads native pre-commit hook already installed"
+    echo "  ✅ Beads native pre-commit already installed"
   else
     cat > "$HOOK_FILE" << 'EOF'
 #!/usr/bin/env bash
-# bd-shim v1
-# BMAD + Beads Integration pre-commit hook
-
-# Check if bd is available
-if ! command -v bd >/dev/null 2>&1; then
-    echo "Warning: bd command not found in PATH, skipping pre-commit hook" >&2
-    exit 0
-fi
-
-# Run bd's built-in pre-commit hook
-exec bd hooks run pre-commit "$@"
+# Fallback Beads shim — prefer: bd hooks install
+command -v bd >/dev/null 2>&1 && exec bd hooks run pre-commit "$@"
 EOF
     chmod +x "$HOOK_FILE"
-    echo "  ✅ Pre-commit hook created"
+    echo "  ✅ Pre-commit fallback shim installed"
+    echo "  ℹ️  For full native hooks: bd hooks install"
   fi
 
   # Pre-push: Beads shim + BMAD auto-land extension
@@ -227,14 +219,9 @@ echo ""
 echo "Installing documentation..."
 mkdir -p "$PROJECT_ROOT/docs"
 
-if [ -f "$SCRIPT_DIR/beads-git-workflow.md" ]; then
-  cp "$SCRIPT_DIR/beads-git-workflow.md" "$PROJECT_ROOT/docs/beads-git-workflow.md"
-  echo "  ✅ beads-git-workflow.md → docs/"
-fi
-
-if [ -f "$SCRIPT_DIR/bmad-workflow-guide.md" ]; then
-  cp "$SCRIPT_DIR/bmad-workflow-guide.md" "$PROJECT_ROOT/docs/bmad-workflow-guide.md"
-  echo "  ✅ bmad-workflow-guide.md → docs/"
+if [ -f "$SCRIPT_DIR/beads-reference.md" ]; then
+  cp "$SCRIPT_DIR/beads-reference.md" "$PROJECT_ROOT/docs/beads-reference.md"
+  echo "  ✅ beads-reference.md → docs/"
 fi
 
 # 8. Summary
@@ -258,6 +245,6 @@ echo "  bd_land       - Sync branches"
 echo "  bd_help       - Show all commands"
 echo ""
 echo "📚 Documentation:"
-echo "  docs/bmad-workflow-guide.md   - Workflow guide"
-echo "  docs/beads-git-workflow.md    - Git workflow & recovery"
+echo "  docs/beads-reference.md       - Full reference (sync, troubleshooting)"
+echo "  .beads/AGENTS.md              - Agent guidance"
 echo ""

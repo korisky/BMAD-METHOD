@@ -107,12 +107,12 @@ echo ""
 echo "=== Documentation Tests ==="
 echo ""
 
-# Test 13: Check beads-git-workflow.md for auto-sync section
-echo "Test 13: Check beads-git-workflow.md for auto-sync documentation"
-if grep -q "Auto-Sync Features" src/modules/bmm/sub-modules/beads/beads-git-workflow.md; then
-    echo "✅ Auto-sync section found in beads-git-workflow.md"
+# Test 13: Check beads-reference.md for sync documentation
+echo "Test 13: Check beads-reference.md for sync documentation"
+if grep -q "Git Sync Architecture" src/modules/bmm/sub-modules/beads/beads-reference.md; then
+    echo "✅ Sync section found in beads-reference.md"
 else
-    echo "❌ Auto-sync section not found"
+    echo "❌ Sync section not found"
 fi
 echo ""
 

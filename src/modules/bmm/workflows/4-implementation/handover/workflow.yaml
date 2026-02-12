@@ -15,7 +15,7 @@ instructions: "{installed_path}/instructions.md"
 validation: "{installed_path}/checklist.md"
 
 # Beads integration
-beads_workflow: "**/beads-git-workflow.md"
+beads_workflow: "**/beads-reference.md"
 
 standalone: true
 web_bundle: false

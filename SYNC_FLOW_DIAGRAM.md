@@ -223,8 +223,8 @@
     ┌──────────────────────────────────────────┐
     │ Manual Recovery                          │
     ├──────────────────────────────────────────┤
-    │ See: docs/beads-git-workflow.md          │
-    │      "Recovery Procedure" section        │
+    │ See: docs/beads-reference.md             │
+    │      "Troubleshooting" section           │
     └──────────────────────────────────────────┘
 ```
 

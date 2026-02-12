@@ -53,6 +53,54 @@ _bmad_branch_exists() {
   git rev-parse --verify "$1" >/dev/null 2>&1
 }
 
+# Trim leading/trailing whitespace and collapse internal runs
+# Used by: _normalize_line, _extract_description
+_bmad_trim_and_collapse() {
+  tr -s ' ' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
+# Pre-check: git repo + .beads dir + bd CLI
+# Args: [--quiet] — suppress output, just return exit code
+# Returns: 0 if OK, 1 if missing
+_bmad_check_repo_and_beads() {
+  local quiet=false
+  [ "$1" = "--quiet" ] && quiet=true
+  if ! git rev-parse --git-dir > /dev/null 2>&1; then
+    $quiet || echo "❌ Not a git repository"; return 1
+  fi
+  if [ ! -d ".beads" ]; then
+    $quiet || echo "⚠️  Beads not initialized — run: bd init"; return 1
+  fi
+  if ! command -v bd >/dev/null 2>&1; then
+    $quiet || echo "❌ bd CLI not found"; return 1
+  fi
+  return 0
+}
+
+# Check open claims with optional verbose output
+# Args: [--verbose] — show claims + hint, [--warn] — show warning only if claims exist
+# Returns: 0 if no claims, 1 if claims exist
+_bmad_check_open_claims() {
+  local mode="${1:---verbose}"
+  local claims=$(bd list --type task --status in_progress 2>/dev/null | grep -v "^$")
+  if [ -n "$claims" ]; then
+    if [ "$mode" = "--verbose" ]; then
+      echo "$claims"
+      echo "  ℹ️  Remember to release claims when done: bd_release <id>"
+    elif [ "$mode" = "--warn" ]; then
+      echo "⚠️  Open claims exist (consider releasing with bd_release)"
+    fi
+    return 1
+  else
+    if [ "$mode" = "--verbose" ]; then
+      echo "  ✅ No active claims"
+    elif [ "$mode" = "--warn" ]; then
+      echo "✅ No open claims"
+    fi
+    return 0
+  fi
+}
+
 # ============================================
 # WORK CLAIMING
 # ============================================
@@ -130,8 +178,7 @@ _normalize_line() {
   echo "$line" | sed -e 's/^[[:space:]]*//' \
                       -e 's/^-[[:space:]]*\[[[:space:]]\][[:space:]]*//' \
                       -e 's/[[:space:]]*$//' | \
-                 tr -s ' ' | \
-                 sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+                 _bmad_trim_and_collapse
 }
 
 # Generate short hash (first 16 chars of SHA-256)
@@ -194,8 +241,7 @@ _extract_description() {
                      -e 's/\[LOW\][[:space:]]*//' \
                      -e 's/^[[:space:]]*//' \
                      -e 's/[[:space:]]*$//' | \
-                 tr -s ' ' | \
-                 sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+                 _bmad_trim_and_collapse
 }
 
 # Sync story file AI-Review items to Beads tasks
@@ -350,26 +396,36 @@ bd_qadd() {
 # SESSION HELPERS
 # ============================================
 
-# Full session start check
+# Full session start check — run this FIRST in every session
 bd_session_start() {
-  echo "=== BEADS SESSION STATUS ==="
+  echo "=== BEADS SESSION CHECK ==="
+
+  # Pre-validation (catches problems before work starts)
+  _bmad_check_repo_and_beads || return 1
+  if ! bd stats >/dev/null 2>&1; then
+    echo "  ⚠️  Daemon not running — run: bd daemon start"
+  fi
+  if _bmad_branch_exists beads-sync; then
+    local behind=$(_bmad_check_divergence "$(_bmad_default_branch)" beads-sync)
+    [ "$behind" -gt 0 ] && echo "  ⚠️  Branches out of sync — run bd_land"
+  fi
   echo ""
-  echo "HALTs (must resolve first):"
+
+  # HALTs first (must resolve before work)
+  echo "HALTs (priority 0):"
   bd list --type blocker --priority 0 --status open 2>/dev/null || echo "  None"
-  echo ""
-  echo "Active blockers:"
-  bd list --type blocker --status open 2>/dev/null || echo "  None"
-  echo ""
-  echo "Pending decisions:"
-  bd list --type decision --status open 2>/dev/null || echo "  None"
-  echo ""
-  echo "Currently claimed work:"
-  bd list --type task --status in_progress 2>/dev/null || echo "  None"
   echo ""
   echo "Ready work:"
   bd ready --pretty --limit 5 2>/dev/null || echo "  None"
   echo ""
+  echo "Currently claimed:"
+  bd list --type task --status in_progress 2>/dev/null || echo "  None"
+  echo ""
+  echo "Active blockers:"
+  bd list --type blocker --status open 2>/dev/null || echo "  None"
+  echo ""
   echo "==========================="
+  echo "Next: bd_claim \"{story-key}\" to start work"
 }
 
 # Land the plane - session end helper with branch sync
@@ -378,8 +434,6 @@ bd_land() {
   echo ""
 
   local current_branch=$(git branch --show-current)
-
-  # Detect default branch (main or master)
   local default_branch=$(_bmad_default_branch)
 
   # 1. Check open claims
@@ -387,81 +441,71 @@ bd_land() {
   local claims=$(bd list --type task --status in_progress 2>/dev/null)
   if [ -n "$claims" ]; then
     echo "$claims"
-    echo ""
-    echo "⚠️  You have open claims. Release them with: bd_release <id>"
+    echo "⚠️  Release with: bd_release <id>"
     echo ""
   else
-    echo "  None"
-    echo ""
+    echo "  None"; echo ""
   fi
 
-  # 2. Check if we're in a git repo
-  if ! git rev-parse --git-dir > /dev/null 2>&1; then
-    echo "❌ Not a git repository"
-    return 1
-  fi
-
-  # 3. Check for uncommitted changes
+  # 2. Check for uncommitted changes
   if [ -n "$(git status --porcelain)" ]; then
-    echo "⚠️  You have uncommitted changes. Commit first:"
-    echo "  git add . && git commit -m '...'"
-    echo ""
-    echo "Note: Pre-commit hook will auto-sync beads on commit"
+    echo "⚠️  Uncommitted changes. Commit first."
     return 1
   fi
 
-  # 4. Sync branches (beads-sync → default → current)
-  echo "2. Syncing branches (beads-sync → $default_branch → $current_branch)..."
-  echo ""
+  # 3. Sync beads-sync → main (use native Beads when available)
+  if _bmad_branch_exists beads-sync; then
+    echo "2. Syncing beads-sync → $default_branch..."
 
-  # Fetch latest
-  git fetch origin 2>/dev/null || true
-
-  # Check if beads-sync exists
-  if ! _bmad_branch_exists beads-sync; then
-    echo "⚠️  beads-sync branch not found. Skipping branch sync."
-    echo "  (This is normal if beads daemon isn't running)"
-    return 0
-  fi
-
-  # Sync to default branch (main/master)
-  git checkout "$default_branch" || { echo "❌ Can't checkout $default_branch"; return 1; }
-
-  if git merge beads-sync --ff-only 2>&1; then
-    echo "  ✅ $default_branch synced with beads-sync"
-  else
-    # Check if up-to-date or actual error (divergence)
-    if git merge-base --is-ancestor beads-sync "$default_branch" 2>/dev/null; then
-      echo "  ℹ️  $default_branch already up to date"
+    # Try native bd sync --merge first, fall back to raw git
+    if bd sync --merge --dry-run >/dev/null 2>&1; then
+      if bd sync --merge 2>&1; then
+        echo "  ✅ $default_branch synced with beads-sync"
+      else
+        echo "  ❌ bd sync --merge failed. Recovery: bd_fix"
+        git checkout "$current_branch" 2>/dev/null
+        return 1
+      fi
     else
-      echo "  ❌ Cannot fast-forward. Branches diverged."
-      echo "     Diagnosis: git log $default_branch..beads-sync"
-      echo "     Recovery: bd_fix divergence"
-      return 1
+      # Fallback: raw git (older Beads without bd sync --merge)
+      echo "  (using git merge fallback)"
+      git fetch origin 2>/dev/null || true
+      git checkout "$default_branch" || { echo "❌ Can't checkout $default_branch"; return 1; }
+
+      if git merge beads-sync --no-ff -m "merge: beads-sync into $default_branch" 2>&1; then
+        echo "  ✅ $default_branch synced with beads-sync"
+      else
+        if git merge-base --is-ancestor beads-sync "$default_branch" 2>/dev/null; then
+          echo "  ℹ️  $default_branch already up to date"
+        else
+          echo "  ❌ Cannot merge beads-sync. Recovery: bd_fix"
+          git checkout "$current_branch" 2>/dev/null
+          return 1
+        fi
+      fi
+
+      git push origin "$default_branch" 2>/dev/null || echo "  ⚠️  Can't push to origin/$default_branch"
     fi
+  else
+    echo "2. beads-sync not found (daemon not running — OK for solo work)"
   fi
 
-  git push origin "$default_branch" 2>/dev/null || echo "  ⚠️  Can't push to origin/$default_branch (maybe protected?)"
-
-  # Sync to current branch
+  # 4. Sync main → current branch (BMAD's unique three-way sync)
   if [ "$current_branch" != "$default_branch" ]; then
     git checkout "$current_branch" || { echo "❌ Can't checkout $current_branch"; return 1; }
 
     if git merge "$default_branch" --no-ff -m "merge: sync from $default_branch" 2>/dev/null; then
       echo "  ✅ $current_branch synced with $default_branch"
     else
-      # Check if up-to-date or actual error
       if git merge-base --is-ancestor "$default_branch" "$current_branch" 2>/dev/null; then
         echo "  ℹ️  $current_branch already up to date"
       else
         echo "  ⚠️  Cannot merge $default_branch into $current_branch"
-        echo "     This may indicate merge conflicts or divergence"
-        echo "     Recovery: bd_fix divergence"
+        echo "     Recovery: bd_fix"
         return 1
       fi
     fi
-
-    git push origin "$current_branch" 2>/dev/null || echo "  ⚠️  Can't push to origin/$current_branch"
+    git push origin "$current_branch" 2>/dev/null || echo "  ⚠️  Can't push $current_branch"
   fi
 
   echo ""
@@ -602,7 +646,8 @@ bd_auto_sync() {
     fi
 
     echo "Syncing: beads-sync is $ahead commits ahead"
-    bd_land 2>&1
+    # Use bd sync (export/commit/push) — NOT bd_land which switches branches
+    bd sync 2>&1
     echo "Complete: $(date '+%Y-%m-%d %H:%M:%S')"
   } >> "$log_file" 2>&1
 
@@ -622,54 +667,44 @@ bd_health() {
   echo "=== BEADS HEALTH CHECK ==="
   local issues=0
 
-  # 1. Check if in git repo
-  if ! git rev-parse --git-dir > /dev/null 2>&1; then
-    echo "❌ Not a git repository"
-    return 1
-  fi
-
-  # 2. Check if beads initialized
-  if [ ! -d ".beads" ]; then
-    echo "⚠️  Beads not initialized in this project"
-    echo "   Run: bd init"
-    return 1
-  fi
+  # 1-2. Check git repo + beads + bd CLI
+  _bmad_check_repo_and_beads || return 1
 
   # 3. Check daemon status
   echo ""
   echo "Daemon Status:"
-  if command -v bd >/dev/null 2>&1; then
-    if bd stats 2>/dev/null; then
-      echo "  ✅ Daemon running"
-    else
-      echo "  ⚠️  Daemon not running or not responding"
-      echo "     Run: bd daemon start"
-      ((issues++))
-    fi
+  if bd stats 2>/dev/null; then
+    echo "  ✅ Daemon running"
   else
-    echo "  ❌ bd CLI not found"
-    return 1
+    echo "  ⚠️  Daemon not running or not responding"
+    echo "     Run: bd daemon start"
+    ((issues++))
   fi
 
   # 4. Check branch divergence (if beads-sync exists)
   echo ""
   echo "Branch Sync Status:"
   if _bmad_branch_exists beads-sync; then
-    local default_branch=$(_bmad_default_branch)
-
-    local ahead=$(_bmad_check_divergence "$default_branch" beads-sync)
-    local behind=$(_bmad_check_divergence beads-sync "$default_branch")
-
-    if [ "$ahead" -gt 0 ]; then
-      echo "  ⚠️  beads-sync is $ahead commit(s) ahead of $default_branch"
-      echo "     Run: bd_land (to sync branches)"
-      ((issues++))
-    elif [ "$behind" -gt 0 ]; then
-      echo "  ⚠️  beads-sync is $behind commit(s) behind $default_branch"
-      echo "     (This is unusual - beads-sync should be auto-updated)"
-      ((issues++))
+    if bd sync --status 2>/dev/null; then
+      # bd sync --status available — it reports status natively
+      true
     else
-      echo "  ✅ Branches in sync"
+      # Fallback to manual divergence check
+      local default_branch=$(_bmad_default_branch)
+      local ahead=$(_bmad_check_divergence "$default_branch" beads-sync)
+      local behind=$(_bmad_check_divergence beads-sync "$default_branch")
+
+      if [ "$ahead" -gt 0 ]; then
+        echo "  ⚠️  beads-sync is $ahead commit(s) ahead of $default_branch"
+        echo "     Run: bd_land (to sync branches)"
+        ((issues++))
+      elif [ "$behind" -gt 0 ]; then
+        echo "  ⚠️  beads-sync is $behind commit(s) behind $default_branch"
+        echo "     (This is unusual - beads-sync should be auto-updated)"
+        ((issues++))
+      else
+        echo "  ✅ Branches in sync"
+      fi
     fi
   else
     echo "  ⚠️  beads-sync branch not found"
@@ -679,28 +714,18 @@ bd_health() {
   # 5. Check active claims
   echo ""
   echo "Active Work Claims:"
-  if command -v bd >/dev/null 2>&1; then
-    local claims=$(bd list --type task --status in_progress 2>/dev/null | grep -v "^$")
-    if [ -n "$claims" ]; then
-      echo "$claims"
-      echo "  ℹ️  Remember to release claims when done: bd_release <id>"
-    else
-      echo "  ✅ No active claims"
-    fi
-  fi
+  _bmad_check_open_claims --verbose
 
   # 6. Check for open HALTs
   echo ""
   echo "Critical Issues (HALTs):"
-  if command -v bd >/dev/null 2>&1; then
-    local halts=$(bd list --type blocker --priority 0 --status open 2>/dev/null | grep -v "^$")
-    if [ -n "$halts" ]; then
-      echo "$halts"
-      echo "  ⚠️  HALTs must be resolved before proceeding"
-      ((issues++))
-    else
-      echo "  ✅ No HALTs"
-    fi
+  local halts=$(bd list --type blocker --priority 0 --status open 2>/dev/null | grep -v "^$")
+  if [ -n "$halts" ]; then
+    echo "$halts"
+    echo "  ⚠️  HALTs must be resolved before proceeding"
+    ((issues++))
+  else
+    echo "  ✅ No HALTs"
   fi
 
   # 7. Check config location
@@ -759,14 +784,7 @@ bd_preflight() {
   fi
 
   # 3. Open claims?
-  if command -v bd >/dev/null 2>&1; then
-    local claims=$(bd list --type task --status in_progress 2>/dev/null | grep -v "^$" | head -1)
-    if [ -n "$claims" ]; then
-      echo "⚠️  Open claims exist (consider releasing with bd_release)"
-    else
-      echo "✅ No open claims"
-    fi
-  fi
+  _bmad_check_open_claims --warn
 
   # Verdict
   echo ""
@@ -814,7 +832,7 @@ bd_fix() {
   else
     echo ""
     echo "❌ Auto-fix couldn't resolve all issues."
-    echo "   See: docs/beads-git-workflow.md for manual recovery"
+    echo "   See: docs/beads-reference.md for manual recovery"
     return 1
   fi
 }
@@ -826,57 +844,41 @@ bd_fix() {
 bd_help() {
   echo "BMAD + Beads Integration Commands"
   echo ""
-  echo "📋 SIMPLE WORKFLOW:"
-  echo "  1. Work & commit normally (hook auto-syncs beads)"
-  echo "  2. bd_preflight  → check if ready to push"
-  echo "  3. If ❌: bd_land → sync branches, then bd_preflight again"
-  echo "  4. If ✅: git push"
+  echo "SESSION START:"
+  echo "  bd_session_start   - Check HALTs, ready work, branch sync (RUN FIRST)"
+  echo "  bd_claim \"key\"     - Claim story before starting"
   echo ""
-  echo "🔧 CORE COMMANDS:"
-  echo "  bd_preflight     - Check if ready to push (run this!)"
-  echo "  bd_health        - Comprehensive health check (daemon, branches, claims)"
-  echo "  bd_land          - Sync branches (beads-sync → main → current)"
-  echo "  bd_fix           - Auto-fix common issues"
+  echo "DURING WORK:"
+  echo "  bd_decision \"...\"  - Track runtime decision"
+  echo "  bd_blocker \"...\"   - Track external blocker"
+  echo "  bd_halt \"...\"      - HALT (priority 0 — stops all work)"
+  echo "  bd_action \"...\"    - Create action item"
+  echo "  bd_sync_story <f>  - Sync story AI-Review items to Beads"
   echo ""
-  echo "🩹 TROUBLESHOOTING / RECOVERY:"
-  echo "  When bd_land fails with '❌ Cannot fast-forward. Branches diverged':"
-  echo "    1. bd_health           → Diagnose divergence (see commit counts)"
-  echo "    2. bd_fix divergence   → Auto-recovery (recommended)"
-  echo "    3. Manual recovery     → See docs/beads-git-workflow.md"
+  echo "SESSION END (HANDOVER):"
+  echo "  bd_release <id>    - Release claim when done"
+  echo "  bd_land            - Sync branches (beads-sync → main → current)"
+  echo "  bd_preflight       - Check if ready to push"
+  echo "  git push           - Push when preflight shows all green"
   echo ""
-  echo "  Common recovery commands:"
-  echo "    bd_health              → Check branch sync status"
-  echo "    bd_fix                 → Auto-fix common issues"
-  echo "    git log main..beads-sync       → See what's ahead"
-  echo "    git merge beads-sync --no-ff  → Manual merge (if auto-fix fails)"
+  echo "TROUBLESHOOTING:"
+  echo "  bd_health          - Full diagnostic"
+  echo "  bd_fix             - Auto-fix common issues"
+  echo "  bd_config_sync     - Configure auto-sync mode (warning/auto/block/off)"
   echo ""
-  echo "⚙️  AUTO-SYNC CONFIG:"
-  echo "  bd_config_sync <mode>  - Configure auto-sync behavior"
-  echo "    Modes: warning (ask), block (refuse), auto (always), off (disable)"
-  echo "  Current: $(git config beads.auto-sync 2>/dev/null || echo 'warning')"
+  echo "STATUS (anytime):"
+  echo "  bd_status          - Ready work + blockers"
+  echo "  bd_next            - Ready work only"
+  echo "  bd_halts           - Critical issues (P0)"
+  echo "  bd_blockers        - All blockers"
+  echo "  bd_decisions       - Open decisions"
+  echo "  bd_who             - Who's working on what"
   echo ""
-  echo "⚡ QUICK COMMITS (human-agent mixed workflow):"
-  echo "  bd_quick <msg>   - Commit with lint-staged only (skip tests)"
-  echo "  bd_qadd <msg>    - Stage all + quick commit"
+  echo "QUICK COMMITS:"
+  echo "  bd_quick <msg>     - Commit with lint-staged only (skip tests)"
+  echo "  bd_qadd <msg>      - Stage all + quick commit"
   echo ""
-  echo "STATUS:"
-  echo "  bd_status        - Ready work + blockers"
-  echo "  bd_next          - Ready work only"
-  echo "  bd_blockers      - All blockers"
-  echo "  bd_halts         - Critical issues (P0)"
-  echo ""
-  echo "CLAIMING:"
-  echo "  bd_claim <story> - Claim a story before starting"
-  echo "  bd_release <id>  - Release a claim when done"
-  echo ""
-  echo "CREATE:"
-  echo "  bd_halt <reason> - Create HALT (P0 blocker)"
-  echo "  bd_decision <t>  - Create runtime decision"
-  echo "  bd_blocker <t>   - Create blocker"
-  echo "  bd_action <t>    - Create action item"
-  echo ""
-  echo "📚 Documentation:"
-  echo "  docs/beads-git-workflow.md"
+  echo "Documentation: docs/beads-reference.md"
   echo ""
 }
 

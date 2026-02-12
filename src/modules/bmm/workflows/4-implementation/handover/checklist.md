@@ -25,6 +25,7 @@ optional-inputs:
 - [ ] **Run `bd_preflight`** → Should show all ✅
 
 If ❌ appears:
+
 - [ ] **Run `bd_land`** to sync branches
 - [ ] **Run `bd_preflight`** again to verify
 
@@ -34,7 +35,7 @@ If ❌ appears:
 
 ## Optional: Next Session Prep
 
-- [ ] **Ready Work Identified:** `bd_status` shows available work
+- [ ] **Ready Work Identified:** `bd_session_start` shows available work
 - [ ] **Blockers Documented:** Any blockers recorded (`bd_blocker`)
 
 ---
@@ -46,7 +47,7 @@ bd_preflight: {{✅ Ready / ❌ Not Ready}}
 git push: {{done / skipped}}
 
 Next Ready Work:
-{{bd_status output}}
+{{bd_session_start output}}
 ```
 
 **If not ready:** Run `bd_fix` or `bd_land` and try again.

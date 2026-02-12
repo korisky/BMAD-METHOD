@@ -18,24 +18,24 @@ injections:
     requires: "beads-enabled"
     content: |
       <!-- BEADS INTEGRATION -->
-      ## Session: START→`[WS]`→claim | END→`[HO]`→NEXT
+      ## Before Starting Work
+      1. `bd_session_start` → Check HALTs, ready work, branch sync
+      2. `bd_claim "{story-key}"` → Claim before coding
+      3. If HALTs exist → resolve or escalate first
 
-      **During Work:**
-      - Commit normally (hook auto-syncs beads)
+      ## During Work
+      - Commit normally (hooks auto-sync)
       - `bd_halt "{reason}"` → critical blocker (stops work)
-      - `bd_blocker "{title}"` → external blocker
       - `bd_decision "{title}"` → runtime decision
+      - `bd_sync_story {file}` → after adding AI-Review items
 
-      **Story → Beads Sync:**
-      - After adding AI-Review items to story file: `bd_sync_story {story-file}`
-
-      **Session End (ALWAYS):**
+      ## Session End (ALWAYS)
       1. `bd_release {id}` → release claims
-      2. `bd_preflight` → check if ready to push
-      3. If ❌: `bd_land` then `bd_preflight` again
-      4. If ✅: `git push`
+      2. `bd_land` → sync branches
+      3. `bd_preflight` → verify ready
+      4. `git push`
 
-      **Something Broke?** Run `bd_fix`
+      **Something broke?** `bd_fix`
       <!-- END BEADS INTEGRATION -->
 
   - file: "_bmad/bmm/agents/sm.md"
@@ -43,17 +43,21 @@ injections:
     requires: "beads-enabled"
     content: |
       <!-- BEADS INTEGRATION -->
-      ## Session: START→`[WS]` | SCOPE CHANGE→`[CC]` | END→`[HO]`→NEXT
+      ## Before Starting Work
+      1. `bd_session_start` → Check HALTs, ready work, branch sync
+      2. If HALTs exist → resolve or escalate first
 
-      **Sprint Management:**
+      ## Sprint Management
       - `bd_blocker "Dep: Story {B} needs {A}"` → cross-story deps
       - `bd_decision "Defer: {story} to next sprint"` → deferrals
       - `bd_action "Action: {item}"` → retrospective items
 
-      **Session End:**
-      1. `bd_preflight` → check if ready
-      2. If ❌: `bd_land` then `bd_preflight` again
-      3. If ✅: `git push`
+      ## Session End (ALWAYS)
+      1. `bd_land` → sync branches
+      2. `bd_preflight` → verify ready
+      3. `git push`
+
+      **Something broke?** `bd_fix`
       <!-- END BEADS INTEGRATION -->
 
   - file: "_bmad/bmm/agents/pm.md"
@@ -61,20 +65,22 @@ injections:
     requires: "beads-enabled"
     content: |
       <!-- BEADS INTEGRATION -->
-      ## Beads Runtime Coordination
+      ## Before Starting Work
+      1. `bd_session_start` → Check HALTs, blockers, scope state
+      2. If HALTs exist → resolve or escalate first
 
-      **When to Use Beads vs BMAD:**
+      ## Runtime Decisions (Beads vs BMAD)
       - BMAD: ADRs (architecture.md), phase progress (workflow-status.yaml)
       - Beads: Runtime scope/priority changes AFTER formal workflows
-
-      **Runtime Decisions:**
       - `bd_decision "Scope: {change}"` → scope changes
       - `bd_decision "Priority: {change}"` → priority changes
 
-      **Session End:**
-      1. `bd_preflight` → check if ready
-      2. If ❌: `bd_land` then `bd_preflight` again
-      3. If ✅: `git push`
+      ## Session End (ALWAYS)
+      1. `bd_land` → sync branches
+      2. `bd_preflight` → verify ready
+      3. `git push`
+
+      **Something broke?** `bd_fix`
       <!-- END BEADS INTEGRATION -->
 
   - file: "_bmad/bmm/agents/architect.md"
@@ -82,20 +88,22 @@ injections:
     requires: "beads-enabled"
     content: |
       <!-- BEADS INTEGRATION -->
-      ## Beads Runtime Coordination
+      ## Before Starting Work
+      1. `bd_session_start` → Check HALTs, technical blockers
+      2. If HALTs exist → resolve or escalate first
 
-      **When to Use Beads vs BMAD:**
+      ## Post-Architecture Changes (Beads vs BMAD)
       - BMAD: ADRs captured in architecture.md during workflow
       - Beads: Post-workflow tech/pattern changes only
-
-      **Post-Architecture Changes:**
       - `bd_decision "Tech: {change}"` → technology pivots
       - `bd_decision "Pattern: {change}"` → pattern changes
 
-      **Session End:**
-      1. `bd_preflight` → check if ready
-      2. If ❌: `bd_land` then `bd_preflight` again
-      3. If ✅: `git push`
+      ## Session End (ALWAYS)
+      1. `bd_land` → sync branches
+      2. `bd_preflight` → verify ready
+      3. `git push`
+
+      **Something broke?** `bd_fix`
       <!-- END BEADS INTEGRATION -->
 
   # Code review workflow reminder
