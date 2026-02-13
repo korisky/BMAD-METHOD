@@ -30,6 +30,7 @@ Thumbs.db
 
 # AI assistant files
 CLAUDE.md
+HANDOFF-*.md
 .ai/*
 cursor
 .gemini
@@ -51,6 +52,7 @@ _bmad-output
 .augment
 .augment/
 # Upstream code review infrastructure (optional for fork)
+.coderabbit.yaml
 .github/PULL_REQUEST_TEMPLATE.md
 .github/workflows/coderabbit-review.yaml
 .github/workflows/discord.yaml
