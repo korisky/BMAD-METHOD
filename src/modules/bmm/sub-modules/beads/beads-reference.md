@@ -194,6 +194,7 @@ git -C .git/beads-worktrees/beads-sync checkout beads-sync
 - Run `bd_land` at session end (every time)
 - Use `bd_preflight` before pushing
 - Keep daemon enabled for auto-sync
+- Start daemon without `--auto-push`: `bd daemon --start --interval 5s --auto-commit --auto-pull`
 
 ### Don't
 
@@ -202,6 +203,7 @@ git -C .git/beads-worktrees/beads-sync checkout beads-sync
 - Don't edit `.beads/` manually (use `bd` commands)
 - Don't remove the beads-sync worktree
 - Don't skip handover workflow
+- Don't use `bd daemon --auto-push` (conflicts with pre-push hook, causes race conditions)
 
 ---
 

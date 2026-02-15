@@ -588,17 +588,24 @@ bd_auto_land() {
       return 1
       ;;
     warning|*)
-      # Ask before syncing (default)
-      echo "⚠️  beads-sync is $ahead commit(s) ahead of $default_branch"
-      echo ""
-      read -p "Run bd_land to sync branches? [y/N] " -n 1 -r
-      echo ""
-      if [[ $REPLY =~ ^[Yy]$ ]]; then
+      if [ -t 0 ]; then
+        # Interactive terminal — prompt as before
+        echo "⚠️  beads-sync is $ahead commit(s) ahead of $default_branch"
+        echo ""
+        read -p "Run bd_land to sync branches? [y/N] " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+          bd_land
+          return $?
+        else
+          echo "Push cancelled. Run 'bd_land' manually when ready."
+          return 1
+        fi
+      else
+        # No TTY (GUI git client, code agent) — auto-sync silently
+        echo "🔄 Auto-syncing branches (beads-sync is $ahead commits ahead)..."
         bd_land
         return $?
-      else
-        echo "Push cancelled. Run 'bd_land' manually when ready."
-        return 1
       fi
       ;;
   esac
@@ -675,6 +682,17 @@ bd_health() {
   echo "Daemon Status:"
   if bd stats 2>/dev/null; then
     echo "  ✅ Daemon running"
+
+    # Check for --auto-push misconfiguration
+    local daemon_pid=$(pgrep -f "bd.*daemon" 2>/dev/null | head -1)
+    if [ -n "$daemon_pid" ]; then
+      local daemon_cmd=$(ps -p "$daemon_pid" -o args= 2>/dev/null)
+      if echo "$daemon_cmd" | grep -q -- "--auto-push"; then
+        echo "  ⚠️  Daemon using --auto-push (conflicts with pre-push hook)"
+        echo "     Fix: bd daemon --stop && bd daemon --start --interval 5s --auto-commit --auto-pull"
+        ((issues++))
+      fi
+    fi
   else
     echo "  ⚠️  Daemon not running or not responding"
     echo "     Run: bd daemon start"

@@ -35,7 +35,7 @@ echo ""
 echo "Installing BMAD aliases..."
 mkdir -p .beads/lib .beads/logs .beads/tmp
 cp "$SCRIPT_DIR/beads-aliases.sh" .beads/lib/bmad-aliases.sh
-echo "0.0.3" > .beads/.bmad-version
+echo "0.0.4" > .beads/.bmad-version
 echo "  ✅ Installed to .beads/lib/bmad-aliases.sh"
 echo ""
 
@@ -158,7 +158,13 @@ EOF
   fi
 fi
 
-# 6. Update AGENTS.md with managed Beads integration guidance (idempotent)
+# 6. Set safe auto-sync default (works in all contexts including GUI git clients)
+if [ -z "$(git config beads.auto-sync 2>/dev/null)" ]; then
+  git config beads.auto-sync auto
+  echo "  ✅ Auto-sync: auto (change with: bd_config_sync <mode>)"
+fi
+
+# 7. Update AGENTS.md with managed Beads integration guidance (idempotent)
 _update_agents_md() {
   local agents_md=".beads/AGENTS.md"
   local template_file="$SCRIPT_DIR/AGENTS.md.template"
@@ -214,7 +220,7 @@ echo ""
 echo "Updating agent guidance..."
 _update_agents_md
 
-# 7. Install workflow documentation
+# 8. Install workflow documentation
 echo ""
 echo "Installing documentation..."
 mkdir -p "$PROJECT_ROOT/docs"
@@ -224,7 +230,7 @@ if [ -f "$SCRIPT_DIR/beads-reference.md" ]; then
   echo "  ✅ beads-reference.md → docs/"
 fi
 
-# 8. Summary
+# 9. Summary
 echo ""
 echo "=== Installation Complete ==="
 echo ""
