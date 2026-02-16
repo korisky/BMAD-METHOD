@@ -29,12 +29,14 @@ injections:
       - `bd_decision "{title}"` → runtime decision
       - `bd_sync_story {file}` → after adding AI-Review items
 
-      ## Session End (ALWAYS)
-      1. `bd_release {id}` → release claims
-      2. `bd_land` → sync branches
-      3. `bd_preflight` → verify ready
-      4. `git push`
+      ## Session End
+      1. `bd_release {id}` → release claims (if any)
+      2. Check workflow mode:
+         - Agent mode: `bd_land` (sync branches) → `bd_preflight` → `git push`
+         - Mixed/Human mode: `bd_preflight` → `git push` (hooks handle sync)
 
+      **Note**: In mixed/human workflows, pre-push hook syncs only if needed.
+      **For strict sync**: Use `bd_land` manually or set `bd_config_workflow agent`
       **Something broke?** `bd_fix`
       <!-- END BEADS INTEGRATION -->
 
@@ -52,11 +54,13 @@ injections:
       - `bd_decision "Defer: {story} to next sprint"` → deferrals
       - `bd_action "Action: {item}"` → retrospective items
 
-      ## Session End (ALWAYS)
-      1. `bd_land` → sync branches
-      2. `bd_preflight` → verify ready
-      3. `git push`
+      ## Session End
+      1. Check workflow mode:
+         - Agent mode: `bd_land` (sync branches) → `bd_preflight` → `git push`
+         - Mixed/Human mode: `bd_preflight` → `git push` (hooks handle sync)
 
+      **Note**: In mixed/human workflows, pre-push hook syncs only if needed.
+      **For strict sync**: Use `bd_land` manually or set `bd_config_workflow agent`
       **Something broke?** `bd_fix`
       <!-- END BEADS INTEGRATION -->
 
@@ -75,11 +79,13 @@ injections:
       - `bd_decision "Scope: {change}"` → scope changes
       - `bd_decision "Priority: {change}"` → priority changes
 
-      ## Session End (ALWAYS)
-      1. `bd_land` → sync branches
-      2. `bd_preflight` → verify ready
-      3. `git push`
+      ## Session End
+      1. Check workflow mode:
+         - Agent mode: `bd_land` (sync branches) → `bd_preflight` → `git push`
+         - Mixed/Human mode: `bd_preflight` → `git push` (hooks handle sync)
 
+      **Note**: In mixed/human workflows, pre-push hook syncs only if needed.
+      **For strict sync**: Use `bd_land` manually or set `bd_config_workflow agent`
       **Something broke?** `bd_fix`
       <!-- END BEADS INTEGRATION -->
 
@@ -98,11 +104,13 @@ injections:
       - `bd_decision "Tech: {change}"` → technology pivots
       - `bd_decision "Pattern: {change}"` → pattern changes
 
-      ## Session End (ALWAYS)
-      1. `bd_land` → sync branches
-      2. `bd_preflight` → verify ready
-      3. `git push`
+      ## Session End
+      1. Check workflow mode:
+         - Agent mode: `bd_land` (sync branches) → `bd_preflight` → `git push`
+         - Mixed/Human mode: `bd_preflight` → `git push` (hooks handle sync)
 
+      **Note**: In mixed/human workflows, pre-push hook syncs only if needed.
+      **For strict sync**: Use `bd_land` manually or set `bd_config_workflow agent`
       **Something broke?** `bd_fix`
       <!-- END BEADS INTEGRATION -->
 

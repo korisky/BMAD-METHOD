@@ -87,6 +87,45 @@ bd_config_sync <mode>
 | `block`             | Refuse push until synced |
 | `off`               | Disable checks           |
 
+### Workflow Modes
+
+Configure how Beads integration behaves in your workflow:
+
+```bash
+bd_config_workflow <mode>
+```
+
+| Mode              | Description                                   | When to Use                          |
+| ----------------- | --------------------------------------------- | ------------------------------------ |
+| `mixed` (default) | Smart detection based on daemon status        | Human & Code Agent collaboration     |
+| `agent`           | Always sync beads-sync (strict)               | Pure Code Agent workflows            |
+| `human`           | Never sync beads-sync                         | Pure human workflows (no daemon)     |
+| `auto`            | Automatic mode switching                      | Let system decide based on daemon    |
+
+**Examples:**
+
+```bash
+# Working alone without daemon
+bd_config_workflow human
+
+# Strict agent workflow (always require beads-sync sync)
+bd_config_workflow agent
+
+# Smart mixed workflow (default, recommended)
+bd_config_workflow mixed
+```
+
+**How "mixed" mode works:**
+
+- Daemon running + beads-sync ahead → Syncs beads-sync before push
+- Daemon stopped → Skips beads-sync, syncs main → dev only
+- Daemon idle for 24+ hours → Warning in `bd_health`
+
+**Key difference from auto-sync mode:**
+
+- **Auto-sync mode** controls _how_ to sync (warning/auto/block/off)
+- **Workflow mode** controls _whether_ to sync beads-sync based on workflow context
+
 ---
 
 ## Story Sync (`bd_sync_story`)

@@ -101,6 +101,70 @@ _bmad_check_open_claims() {
   fi
 }
 
+# Detect workflow mode from git config
+# Returns: agent, human, mixed, or auto
+_bmad_detect_workflow_mode() {
+  local configured_mode=$(git config beads.workflow-mode 2>/dev/null || echo "mixed")
+
+  case "$configured_mode" in
+    agent|human|mixed)
+      echo "$configured_mode"
+      ;;
+    auto)
+      # Auto-detect: daemon running + beads-sync exists = agent mode
+      if bd stats >/dev/null 2>&1 && _bmad_branch_exists beads-sync; then
+        echo "agent"
+      else
+        echo "human"
+      fi
+      ;;
+    *)
+      echo "mixed"  # Safe default
+      ;;
+  esac
+}
+
+# Check if beads-sync sync is needed in current workflow
+# Returns: 0 if sync needed, 1 if skip
+_bmad_should_sync_beads() {
+  local mode=$(_bmad_detect_workflow_mode)
+
+  # Pure human mode: never sync beads-sync
+  if [ "$mode" = "human" ]; then
+    return 1
+  fi
+
+  # Agent mode: always sync if beads-sync exists
+  if [ "$mode" = "agent" ]; then
+    _bmad_branch_exists beads-sync && return 0 || return 1
+  fi
+
+  # Mixed mode (default): sync only if daemon running AND beads-sync ahead
+  if [ "$mode" = "mixed" ]; then
+    # Check daemon running
+    if ! bd stats >/dev/null 2>&1; then
+      return 1  # Daemon down = skip
+    fi
+
+    # Check beads-sync exists
+    if ! _bmad_branch_exists beads-sync; then
+      return 1  # No branch = skip
+    fi
+
+    # Check divergence (is beads-sync actually ahead?)
+    local default_branch=$(_bmad_default_branch)
+    local ahead=$(_bmad_check_divergence "$default_branch" beads-sync)
+
+    if [ "$ahead" -gt 0 ]; then
+      return 0  # Beads has commits = sync it
+    else
+      return 1  # No divergence = skip
+    fi
+  fi
+
+  return 1  # Default: skip
+}
+
 # ============================================
 # WORK CLAIMING
 # ============================================
@@ -453,41 +517,47 @@ bd_land() {
     return 1
   fi
 
-  # 3. Sync beads-sync → main (use native Beads when available)
+  # 3. Sync beads-sync → main (ONLY if workflow mode requires it)
   if _bmad_branch_exists beads-sync; then
-    echo "2. Syncing beads-sync → $default_branch..."
+    if _bmad_should_sync_beads; then
+      echo "2. Syncing beads-sync → $default_branch..."
 
-    # Try native bd sync --merge first, fall back to raw git
-    if bd sync --merge --dry-run >/dev/null 2>&1; then
-      if bd sync --merge 2>&1; then
-        echo "  ✅ $default_branch synced with beads-sync"
-      else
-        echo "  ❌ bd sync --merge failed. Recovery: bd_fix"
-        git checkout "$current_branch" 2>/dev/null
-        return 1
-      fi
-    else
-      # Fallback: raw git (older Beads without bd sync --merge)
-      echo "  (using git merge fallback)"
-      git fetch origin 2>/dev/null || true
-      git checkout "$default_branch" || { echo "❌ Can't checkout $default_branch"; return 1; }
-
-      if git merge beads-sync --no-ff -m "merge: beads-sync into $default_branch" 2>&1; then
-        echo "  ✅ $default_branch synced with beads-sync"
-      else
-        if git merge-base --is-ancestor beads-sync "$default_branch" 2>/dev/null; then
-          echo "  ℹ️  $default_branch already up to date"
+      # Try native bd sync --merge first, fall back to raw git
+      if bd sync --merge --dry-run >/dev/null 2>&1; then
+        if bd sync --merge 2>&1; then
+          echo "  ✅ $default_branch synced with beads-sync"
         else
-          echo "  ❌ Cannot merge beads-sync. Recovery: bd_fix"
+          echo "  ❌ bd sync --merge failed. Recovery: bd_fix"
           git checkout "$current_branch" 2>/dev/null
           return 1
         fi
-      fi
+      else
+        # Fallback: raw git (older Beads without bd sync --merge)
+        echo "  (using git merge fallback)"
+        git fetch origin 2>/dev/null || true
+        git checkout "$default_branch" || { echo "❌ Can't checkout $default_branch"; return 1; }
 
-      git push origin "$default_branch" 2>/dev/null || echo "  ⚠️  Can't push to origin/$default_branch"
+        if git merge beads-sync --no-ff -m "merge: beads-sync into $default_branch" 2>&1; then
+          echo "  ✅ $default_branch synced with beads-sync"
+        else
+          if git merge-base --is-ancestor beads-sync "$default_branch" 2>/dev/null; then
+            echo "  ℹ️  $default_branch already up to date"
+          else
+            echo "  ❌ Cannot merge beads-sync. Recovery: bd_fix"
+            git checkout "$current_branch" 2>/dev/null
+            return 1
+          fi
+        fi
+
+        git push origin "$default_branch" 2>/dev/null || echo "  ⚠️  Can't push to origin/$default_branch"
+      fi
+    else
+      local mode=$(_bmad_detect_workflow_mode)
+      echo "2. Skipping beads-sync sync (workflow-mode=$mode, daemon not active)"
+      echo "   ℹ️  To always sync: bd_config_workflow agent"
     fi
   else
-    echo "2. beads-sync not found (daemon not running — OK for solo work)"
+    echo "2. beads-sync not found (daemon not running — OK for human-only workflow)"
   fi
 
   # 4. Sync main → current branch (BMAD's unique three-way sync)
@@ -548,14 +618,59 @@ bd_config_sync() {
   esac
 }
 
+# Configure workflow mode
+# Usage: bd_config_workflow <mode>
+# Modes: agent, human, mixed (default), auto
+bd_config_workflow() {
+  local mode="$1"
+  if [ -z "$mode" ]; then
+    local current=$(git config beads.workflow-mode 2>/dev/null || echo "mixed")
+    echo "Current workflow mode: $current"
+    echo ""
+    echo "Usage: bd_config_workflow <mode>"
+    echo ""
+    echo "Available modes:"
+    echo "  mixed  - Smart detection (sync only if daemon running, default)"
+    echo "  agent  - Always sync beads-sync (strict agent workflow)"
+    echo "  human  - Never sync beads-sync (pure human workflow)"
+    echo "  auto   - Automatic (daemon running = agent, else human)"
+    echo ""
+    echo "Current status:"
+    if bd stats >/dev/null 2>&1; then
+      echo "  ✅ Daemon running"
+    else
+      echo "  ⚠️  Daemon not running"
+    fi
+    if _bmad_branch_exists beads-sync; then
+      echo "  ✅ beads-sync branch exists"
+    else
+      echo "  ⚠️  beads-sync branch not found"
+    fi
+    return 0
+  fi
+
+  case "$mode" in
+    agent|human|mixed|auto)
+      git config beads.workflow-mode "$mode"
+      echo "✅ Workflow mode set to: $mode"
+      ;;
+    *)
+      echo "❌ Invalid mode: $mode"
+      echo "   Valid modes: agent, human, mixed, auto"
+      return 1
+      ;;
+  esac
+}
+
 # Smart pre-push sync with config support
 # Returns 0 if safe to push, 1 if blocked
 bd_auto_land() {
-  # Check if beads-sync exists
-  if ! _bmad_branch_exists beads-sync; then
-    return 0  # No beads-sync = no sync needed
+  # Check if beads-sync sync is needed in current workflow
+  if ! _bmad_should_sync_beads; then
+    return 0  # Workflow mode says skip beads-sync = allow push
   fi
 
+  # If we get here, beads-sync exists and should be synced
   # Detect default branch
   local default_branch=$(_bmad_default_branch)
 
@@ -602,10 +717,20 @@ bd_auto_land() {
           return 1
         fi
       else
-        # No TTY (GUI git client, code agent) — auto-sync silently
-        echo "🔄 Auto-syncing branches (beads-sync is $ahead commits ahead)..."
-        bd_land
-        return $?
+        # No TTY (GUI git client, code agent)
+        # Check workflow mode before forcing auto-sync
+        local mode=$(_bmad_detect_workflow_mode)
+        if [ "$mode" = "agent" ]; then
+          # Agent mode: auto-sync silently (backward compatible)
+          echo "🔄 Auto-syncing branches (beads-sync is $ahead commits ahead)..."
+          bd_land
+          return $?
+        else
+          # Mixed/human mode: warn but don't block
+          echo "⚠️  beads-sync is $ahead commit(s) ahead of $default_branch"
+          echo "   Run 'bd_land' manually when ready, or configure: bd_config_workflow agent"
+          return 0  # Allow push to proceed
+        fi
       fi
       ;;
   esac
@@ -682,6 +807,20 @@ bd_health() {
   echo "Daemon Status:"
   if bd stats 2>/dev/null; then
     echo "  ✅ Daemon running"
+
+    # SAFEGUARD: Warn if daemon running but no recent claims/activity
+    local recent_claims=$(bd list --type task --status in_progress 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$recent_claims" -eq 0 ]; then
+      # Check if there are ANY completed claims in last 24 hours
+      if _bmad_branch_exists beads-sync; then
+        local has_recent_activity=$(git log beads-sync --since="24 hours ago" --oneline 2>/dev/null | wc -l | tr -d ' ')
+        if [ "$has_recent_activity" -eq 0 ]; then
+          echo "  ⚠️  Daemon running but no recent activity (last 24h)"
+          echo "     Consider: bd daemon --stop (if not needed)"
+          echo "     Or: bd_config_workflow human (to skip beads-sync)"
+        fi
+      fi
+    fi
 
     # Check for --auto-push misconfiguration
     local daemon_pid=$(pgrep -f "bd.*daemon" 2>/dev/null | head -1)
@@ -798,7 +937,15 @@ bd_preflight() {
       echo "✅ Branches synced"
     fi
   else
-    echo "⚠️  No beads-sync branch (daemon not running - this is OK for solo work)"
+    local mode=$(_bmad_detect_workflow_mode)
+    if bd stats >/dev/null 2>&1; then
+      echo "✅ No beads-sync branch yet (daemon running, workflow-mode=$mode)"
+    else
+      echo "✅ No beads-sync branch (daemon not running, workflow-mode=$mode)"
+      if [ "$mode" = "agent" ]; then
+        echo "   ℹ️  Start daemon: bd daemon --start --interval 5s --auto-commit --auto-pull"
+      fi
+    fi
   fi
 
   # 3. Open claims?
@@ -883,6 +1030,7 @@ bd_help() {
   echo "  bd_health          - Full diagnostic"
   echo "  bd_fix             - Auto-fix common issues"
   echo "  bd_config_sync     - Configure auto-sync mode (warning/auto/block/off)"
+  echo "  bd_config_workflow - Configure workflow mode (mixed/agent/human/auto)"
   echo ""
   echo "STATUS (anytime):"
   echo "  bd_status          - Ready work + blockers"
