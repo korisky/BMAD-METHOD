@@ -162,8 +162,8 @@ fi
 echo ""
 echo "Configuring workflow defaults..."
 if [ -z "$(git config beads.auto-sync 2>/dev/null)" ]; then
-  git config beads.auto-sync auto
-  echo "  ✅ Auto-sync: auto (change with: bd_config_sync <mode>)"
+  git config beads.auto-sync warning
+  echo "  ✅ Auto-sync: warning (change with: bd_config_sync <mode>)"
 fi
 
 if [ -z "$(git config beads.workflow-mode 2>/dev/null)" ]; then
@@ -173,9 +173,9 @@ fi
 
 # Check daemon configuration and warn about common issues
 if command -v bd >/dev/null 2>&1; then
-  local daemon_pid=$(pgrep -f "bd.*daemon" 2>/dev/null | head -1)
+  daemon_pid=$(pgrep -f "bd.*daemon" 2>/dev/null | head -1)
   if [ -n "$daemon_pid" ]; then
-    local daemon_cmd=$(ps -p "$daemon_pid" -o args= 2>/dev/null)
+    daemon_cmd=$(ps -p "$daemon_pid" -o args= 2>/dev/null)
 
     # Warn if daemon using --auto-push (conflicts with pre-push hook)
     if echo "$daemon_cmd" | grep -q -- "--auto-push"; then

@@ -214,6 +214,15 @@ git -C .git/beads-worktrees/beads-sync checkout beads-sync
 2. **Force-push to beads-sync** — never do this; daemon manages that branch
 3. **Manual edits to `.beads/issues.jsonl`** — use `bd` commands instead
 4. **Long-running branches** — run `bd_land` periodically
+5. **Daemon using `--auto-push`** — pre-push hook will block; see fix below
+
+### Push Blocked with "daemon using --auto-push"?
+
+```bash
+bd daemon --stop
+bd daemon --start --interval 5s --auto-commit --auto-pull
+# Now push will work
+```
 
 ### Prevention
 
@@ -242,7 +251,8 @@ git -C .git/beads-worktrees/beads-sync checkout beads-sync
 - Don't edit `.beads/` manually (use `bd` commands)
 - Don't remove the beads-sync worktree
 - Don't skip handover workflow
-- Don't use `bd daemon --auto-push` (conflicts with pre-push hook, causes race conditions)
+- **CRITICAL**: Never use `bd daemon --auto-push` (pre-push hook will block; causes race conditions)
+  - Correct: `bd daemon --start --interval 5s --auto-commit --auto-pull`
 
 ---
 

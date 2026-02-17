@@ -665,6 +665,13 @@ bd_config_workflow() {
 # Smart pre-push sync with config support
 # Returns 0 if safe to push, 1 if blocked
 bd_auto_land() {
+  # CRITICAL: Block if daemon using --auto-push (causes race conditions)
+  if pgrep -f "bd.*daemon.*--auto-push" >/dev/null 2>&1; then
+    echo "❌ Push blocked: daemon using --auto-push flag"
+    echo "   Fix: bd daemon --stop && bd daemon --start --interval 5s --auto-commit --auto-pull"
+    return 1
+  fi
+
   # Check if beads-sync sync is needed in current workflow
   if ! _bmad_should_sync_beads; then
     return 0  # Workflow mode says skip beads-sync = allow push
