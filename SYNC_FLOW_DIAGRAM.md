@@ -16,13 +16,13 @@
 │ Trigger:  .git/hooks/post-commit                                       │
 │ Action:   (bd_auto_sync &) 2>/dev/null                                 │
 │ Behavior: Non-blocking background sync                                 │
-│ Log:      ~/.bmad/sync.log                                             │
+│ Log:      .beads/logs/sync.log                                         │
 │                                                                         │
 │ Flow:                                                                   │
 │   1. Check if beads-sync exists → Skip if not                          │
 │   2. Check divergence (beads-sync ahead of main) → Skip if none        │
 │   3. Run bd_land silently in background                                │
-│   4. Log results to ~/.bmad/sync.log                                   │
+│   4. Log results to .beads/logs/sync.log                               │
 │                                                                         │
 │ Result: Branches stay synced after every commit                        │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -266,7 +266,7 @@
                             (in background)                            │
                                     │                                   │
                                     ▼                                   │
-                            Log to ~/.bmad/sync.log                     │
+                            Log to .beads/logs/sync.log                 │
                                     │                                   │
                                     └───────────────────────────────────┘
                                                     │
@@ -283,7 +283,7 @@
     $ ← Prompt returns immediately, sync happens in background
 
     Check sync log:
-    $ tail ~/.bmad/sync.log
+    $ tail .beads/logs/sync.log
     === 2026-01-29 14:32:15 ===
     Syncing: beads-sync is 1 commits ahead
     [sync output...]
@@ -292,51 +292,4 @@
 
 ---
 
-## Visual Summary
-
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                    Complete Automation Stack                             │
-└──────────────────────────────────────────────────────────────────────────┘
-
-    Layer 1: BACKGROUND (Post-commit)
-    ──────────────────────────────────
-    ⚡ Fast, silent, non-blocking
-    📝 Logs to ~/.bmad/sync.log
-    🎯 Keeps branches synced proactively
-
-                    ↓
-
-    Layer 2: INTERACTIVE (Pre-push)
-    ────────────────────────────────
-    🛡️ Safety net before push
-    ⚙️ Configurable behavior
-    🚦 Prevents accidental divergence
-
-                    ↓
-
-    Layer 3: MANDATORY (Handover)
-    ──────────────────────────────
-    ✅ Guaranteed sync at session end
-    🔒 Always runs (not conditional)
-    📋 Part of [HO] workflow
-
-                    ↓
-
-         🎉 Zero branch divergence issues
-```
-
----
-
-## Key Takeaways
-
-1. **Three levels** ensure branches stay synced at all times
-2. **Non-blocking** design doesn't interrupt workflow
-3. **Configurable** modes let users choose automation level
-4. **Backward compatible** - can disable with `bd_config_sync off`
-5. **Well logged** - background sync logs to `~/.bmad/sync.log`
-6. **Tested** - 15 automated tests verify functionality
-
----
-
-**For complete implementation details, see IMPLEMENTATION_SUMMARY.md**
+**For complete reference, see `src/modules/bmm/sub-modules/beads/beads-reference.md`**

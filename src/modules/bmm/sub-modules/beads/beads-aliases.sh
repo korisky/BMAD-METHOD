@@ -31,10 +31,18 @@ alias bd_who='bd list --type task --status in_progress'
 # INTERNAL HELPER FUNCTIONS
 # ============================================
 
+# Get the configured remote (default: origin)
+# Override: git config beads.remote <name>
+# Used by: _bmad_default_branch, bd_land, bd_preflight
+_bmad_remote() {
+  git config beads.remote 2>/dev/null || echo "origin"
+}
+
 # Get the default branch (main/master)
 # Used by: bd_land, bd_auto_land, bd_auto_sync, bd_health
 _bmad_default_branch() {
-  git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main"
+  local remote=$(_bmad_remote)
+  git symbolic-ref "refs/remotes/$remote/HEAD" 2>/dev/null | sed "s@^refs/remotes/$remote/@@" || echo "main"
 }
 
 # Check divergence between branches
@@ -128,41 +136,15 @@ _bmad_detect_workflow_mode() {
 # Returns: 0 if sync needed, 1 if skip
 _bmad_should_sync_beads() {
   local mode=$(_bmad_detect_workflow_mode)
-
-  # Pure human mode: never sync beads-sync
-  if [ "$mode" = "human" ]; then
-    return 1
-  fi
-
-  # Agent mode: always sync if beads-sync exists
-  if [ "$mode" = "agent" ]; then
-    _bmad_branch_exists beads-sync && return 0 || return 1
-  fi
-
-  # Mixed mode (default): sync only if daemon running AND beads-sync ahead
-  if [ "$mode" = "mixed" ]; then
-    # Check daemon running
-    if ! bd stats >/dev/null 2>&1; then
-      return 1  # Daemon down = skip
-    fi
-
-    # Check beads-sync exists
-    if ! _bmad_branch_exists beads-sync; then
-      return 1  # No branch = skip
-    fi
-
-    # Check divergence (is beads-sync actually ahead?)
-    local default_branch=$(_bmad_default_branch)
-    local ahead=$(_bmad_check_divergence "$default_branch" beads-sync)
-
-    if [ "$ahead" -gt 0 ]; then
-      return 0  # Beads has commits = sync it
-    else
-      return 1  # No divergence = skip
-    fi
-  fi
-
-  return 1  # Default: skip
+  case "$mode" in
+    human) return 1 ;;
+    agent) _bmad_branch_exists beads-sync ;;
+    mixed|*)
+      _bmad_branch_exists beads-sync || return 1
+      bd stats >/dev/null 2>&1 || return 1
+      [ "$(_bmad_check_divergence "$(_bmad_default_branch)" beads-sync)" -gt 0 ]
+      ;;
+  esac
 }
 
 # ============================================
@@ -225,10 +207,6 @@ bd_done() {
   [ -n "$marker" ] && bd close "$marker" --reason "Completed per BMAD workflow" 2>/dev/null
   echo "✅ Marked done: $key"
 }
-
-# ============================================
-# STORY → BEADS SYNC
-# ============================================
 
 # ============================================
 # STORY SYNC HELPERS (Internal)
@@ -534,7 +512,8 @@ bd_land() {
       else
         # Fallback: raw git (older Beads without bd sync --merge)
         echo "  (using git merge fallback)"
-        git fetch origin 2>/dev/null || true
+        local remote=$(_bmad_remote)
+        git fetch "$remote" 2>/dev/null || true
         git checkout "$default_branch" || { echo "❌ Can't checkout $default_branch"; return 1; }
 
         if git merge beads-sync --no-ff -m "merge: beads-sync into $default_branch" 2>&1; then
@@ -549,7 +528,7 @@ bd_land() {
           fi
         fi
 
-        git push origin "$default_branch" 2>/dev/null || echo "  ⚠️  Can't push to origin/$default_branch"
+        git push "$remote" "$default_branch" 2>/dev/null || echo "  ⚠️  Can't push to $remote/$default_branch"
       fi
     else
       local mode=$(_bmad_detect_workflow_mode)
@@ -575,7 +554,7 @@ bd_land() {
         return 1
       fi
     fi
-    git push origin "$current_branch" 2>/dev/null || echo "  ⚠️  Can't push $current_branch"
+    git push "$(_bmad_remote)" "$current_branch" 2>/dev/null || echo "  ⚠️  Can't push $current_branch"
   fi
 
   echo ""
@@ -934,7 +913,7 @@ bd_preflight() {
 
   # 2. Branch sync status (only if beads-sync exists)
   if _bmad_branch_exists beads-sync; then
-    git fetch origin 2>/dev/null || true
+    git fetch "$(_bmad_remote)" 2>/dev/null || true
     local default_branch=$(_bmad_default_branch)
     local behind=$(_bmad_check_divergence "$default_branch" beads-sync)
     if [ "$behind" -gt 0 ]; then
