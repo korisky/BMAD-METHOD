@@ -1,0 +1,70 @@
+# Beads Integration Injections (Agent-First v0.2.0)
+# Injected into BMAD agent files during installation
+# Uses native bd commands — no bd_* wrapper functions
+
+injections:
+  # Dev agent — task execution with native bd commands
+  - file: "_bmad/bmm/agents/dev.md"
+    point: "beads-critical-actions"
+    requires: "beads-enabled"
+    content: |
+      <!-- BEADS INTEGRATION — Full protocol: .beads/AGENTS.md -->
+      ## Beads (Dev)
+      - Session: `bd ready --json` to see available work
+      - Claim: `bd update <id> --status in_progress --claim` before coding
+      - Blocker: `bd create "title" -t blocker --priority 0` for HALTs
+      - Done: `bd close <id> --reason "summary"` then `bd sync`
+      - Recovery: `bd_fix` (source .beads/lib/bmad-aliases.sh first)
+
+  # Scrum Master agent — coordination with native bd commands
+  - file: "_bmad/bmm/agents/sm.md"
+    point: "beads-critical-actions"
+    requires: "beads-enabled"
+    content: |
+      <!-- BEADS INTEGRATION — Full protocol: .beads/AGENTS.md -->
+      ## Beads (Scrum Master)
+      - Session: `bd ready --json` for sprint state
+      - Blocker: `bd create "Dep: Story B needs A" -t blocker`
+      - Decision: `bd create "Defer: story to next sprint" -t decision`
+      - Action: `bd create "Action: item" -t task`
+      - Done: `bd close <id> --reason "summary"` then `bd sync`
+
+  # PM agent — scope and priority tracking
+  - file: "_bmad/bmm/agents/pm.md"
+    point: "beads-critical-actions"
+    requires: "beads-enabled"
+    content: |
+      <!-- BEADS INTEGRATION — Full protocol: .beads/AGENTS.md -->
+      ## Beads (PM)
+      - Session: `bd ready --json` to see blockers, decisions, scope state
+      - Scope change: `bd create "Scope: change" -t decision`
+      - Priority change: `bd create "Priority: change" -t decision`
+      - ADRs go in architecture.md (BMAD), NOT Beads
+      - Done: `bd close <id> --reason "summary"` then `bd sync`
+
+  # Architect agent — technical decisions
+  - file: "_bmad/bmm/agents/architect.md"
+    point: "beads-critical-actions"
+    requires: "beads-enabled"
+    content: |
+      <!-- BEADS INTEGRATION — Full protocol: .beads/AGENTS.md -->
+      ## Beads (Architect)
+      - Session: `bd ready --json` to see technical blockers
+      - Tech pivot: `bd create "Tech: change" -t decision`
+      - Pattern change: `bd create "Pattern: change" -t decision`
+      - ADRs go in architecture.md (BMAD), NOT Beads
+      - Done: `bd close <id> --reason "summary"` then `bd sync`
+
+  # Code review workflow — sync reminder
+  - file: "_bmad/bmm/workflows/4-implementation/code-review/instructions.xml"
+    point: "code-review-beads-sync"
+    requires: "beads-enabled"
+    content: 'After review: `bd close <review-id> --reason "review complete"` then `bd sync`'
+
+# Shell aliases to install
+aliases:
+  source_file: "beads-aliases.sh"
+  target: ".beads/lib/bmad-aliases.sh"
+  install_instruction: |
+    Source when needed in shell:
+    source .beads/lib/bmad-aliases.sh

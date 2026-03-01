@@ -1,0 +1,111 @@
+# Agent Guidance
+
+This file provides guidance to BMAD agents when working with Beads integration.
+
+<!-- BMAD-BEADS:START -->
+## Agent-First Beads Protocol (v0.2.0)
+
+### Session Start
+1. Read `BMAD_MANIFEST.md` for project context
+2. Run `bd prime` for full Beads state
+3. Run `bd ready --json` for available work
+4. Check HALTs: `bd list --type blocker --priority 0 --status open --json`
+5. If HALTs exist — resolve before proceeding
+
+### Claiming Work
+```bash
+bd update <id> --status in_progress --claim --json
+```
+Always claim before starting work. One task at a time.
+
+### During Work
+
+**Create new items using native bd commands:**
+```bash
+# Task discovered during work
+bd create "title" -t task --deps discovered-from:<current-id>
+
+# Decision needed
+bd create "Decision: X vs Y" -t decision
+
+# Blocker found
+bd create "Blocked: reason" -t blocker
+
+# HALT (critical — stops all work)
+bd create "HALT: reason" -t blocker --priority 0
+
+# Phase gate
+bd create "Gate: phase-complete" -t gate
+```
+
+**Load methodology on-demand:**
+- Personas: `.bmad/personas/{role}.md` — load only when switching roles
+- Templates: `.bmad/templates/{type}.md` — load only when creating artifacts
+- Do NOT load all of `.bmad/` into context at once
+
+### Session End (Landing the Plane)
+1. Close all claimed tasks: `bd close <id> --reason "summary"`
+2. Sync state: `bd sync`
+3. NEVER leave tasks in_progress when ending session
+
+### Agent-Specific Guidance
+
+**Dev Agent:**
+- `bd ready --json` → claim task → implement → test → close
+- Blocker during coding: `bd create "title" -t blocker`
+- HALT (3+ test failures): `bd create "HALT: reason" -t blocker --priority 0`
+- Task checkboxes tracked in story file AND in Beads
+
+**PM Agent:**
+- `bd ready --json` → review scope state
+- Track scope changes: `bd create "Scope: change" -t decision`
+- Track priority changes: `bd create "Priority: change" -t decision`
+- ADRs go in architecture.md (BMAD), NOT Beads
+
+**Scrum Master Agent:**
+- `bd ready --json` → review sprint state
+- Cross-story deps: `bd create "Dep: Story B needs A" -t blocker`
+- Sprint deferrals: `bd create "Defer: story" -t decision`
+- Action items: `bd create "Action: item" -t task`
+
+**Architect Agent:**
+- `bd ready --json` → review technical blockers
+- Tech pivots: `bd create "Tech: change" -t decision`
+- Pattern changes: `bd create "Pattern: change" -t decision`
+- ADRs go in architecture.md (BMAD), NOT Beads
+
+### Molecule Workflows
+For L3-L4 scale work, use molecules to create structured task hierarchies:
+```bash
+bd mol pour bmad-feature --args "title=Feature Name"
+bd mol pour bmad-bugfix --args "title=Bug Description"
+```
+Molecules create epics with phased tasks and gates automatically.
+
+### Priority Scale
+- **0**: HALT conditions, critical blockers (stops all work)
+- **1**: Urgent work, active claims
+- **2**: Decisions, standard tasks
+- **3**: Low priority
+- **4**: Backlog
+
+### Git Sync
+Git hooks handle branch synchronization automatically:
+- **post-commit**: Background sync (non-blocking)
+- **pre-push**: Sync check (configurable: warning/auto/block/off)
+
+For manual sync: source `.beads/lib/bmad-aliases.sh` then `bd_land`.
+
+### Troubleshooting
+```bash
+source .beads/lib/bmad-aliases.sh
+bd_health  # Full diagnostic
+bd_fix     # Auto-recovery
+```
+See `docs/beads-reference.md` for detailed recovery procedures.
+
+<!-- BMAD-BEADS:END -->
+
+## Additional Notes
+
+You can add your own agent guidance notes below. The section above (between BMAD-BEADS markers) will be automatically updated when the Beads integration is updated.

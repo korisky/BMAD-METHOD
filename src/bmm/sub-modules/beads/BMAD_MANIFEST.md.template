@@ -1,0 +1,24 @@
+# BMAD Project Manifest
+
+## Environment
+- BMAD Templates: .bmad/
+- Beads State: .beads/
+- BMAD_HOME: {{BMAD_HOME}}
+
+## Current Status
+- Active Epic: (run `bd list --type epic --status open` to check)
+- Scale Level: (run triage from .bmad/methodology/triage.md)
+- Phase: (check latest gate status)
+
+## Agent Instructions
+1. Run `bd prime` for full project context
+2. Run `bd ready --json` for available work
+3. Claim: `bd update <id> --status in_progress --claim --json`
+4. Work following .bmad/personas/ guidance loaded on-demand
+5. Close: `bd close <id> --reason "summary" --json`
+6. Sync: `bd sync` before ending session
+
+## IDE/CLI Specific
+- Claude Code: See .claude/commands/bmad-ready.md (if exists)
+- Cursor/Windsurf: See .cursorrules (if exists)
+- OpenClaw: JARVIS reads this file via Code Agent workspace

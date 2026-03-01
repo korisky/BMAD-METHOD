@@ -1,0 +1,21 @@
+# BMAD + Beads Protocol
+
+## State First
+Run `bd prime` at session start. Run `bd ready --json` for work.
+
+## Triage (New Work Only)
+If creating new work: read .bmad/methodology/triage.md
+L1: Direct fix. L2: Light plan. L3-L4: Pour molecule.
+
+## Methodology On-Demand
+Load persona/template files ONLY when your task description references them.
+Do NOT load all of .bmad/ into context.
+Personas: .bmad/personas/{role}.md
+Templates: .bmad/templates/{type}.md
+
+## Execution Rules
+- Claim before working: `bd update <id> --status in_progress --claim`
+- Discovered new work: `bd create "title" -t task --deps discovered-from:<current>`
+- Need decision: `bd create "Decision: X vs Y" -t gate` + include in output
+- Done: `bd close <id> --reason "summary"` then `bd sync`
+- NEVER leave tasks in_progress when ending session

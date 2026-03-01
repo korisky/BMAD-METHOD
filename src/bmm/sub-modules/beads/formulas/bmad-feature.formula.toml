@@ -1,0 +1,92 @@
+# BMAD Feature Molecule Formula
+# Poured via: bd mol pour bmad-feature --args "title=Feature Name"
+
+[formula]
+name = "bmad-feature"
+version = "0.2.0"
+description = "BMAD methodology feature workflow — analysis through implementation"
+
+[molecule]
+type = "epic"
+title = "{{title}}"
+
+[[molecule.phases]]
+name = "analysis"
+gate = "analysis-complete"
+
+[[molecule.phases.tasks]]
+title = "Triage: determine scale level"
+type = "task"
+priority = 1
+
+[[molecule.phases.tasks]]
+title = "Research: domain and technical feasibility"
+type = "task"
+priority = 2
+
+[[molecule.phases.tasks]]
+title = "Create product brief"
+type = "task"
+priority = 2
+
+[[molecule.phases]]
+name = "planning"
+gate = "planning-complete"
+
+[[molecule.phases.tasks]]
+title = "Create PRD"
+type = "task"
+priority = 1
+
+[[molecule.phases.tasks]]
+title = "Validate PRD"
+type = "task"
+priority = 2
+
+[[molecule.phases]]
+name = "solutioning"
+gate = "solutioning-complete"
+
+[[molecule.phases.tasks]]
+title = "Create architecture document"
+type = "task"
+priority = 1
+
+[[molecule.phases.tasks]]
+title = "Create epics and stories"
+type = "task"
+priority = 1
+
+[[molecule.phases.tasks]]
+title = "Implementation readiness check"
+type = "task"
+priority = 2
+
+[[molecule.phases]]
+name = "implementation"
+gate = "implementation-complete"
+
+[[molecule.phases.tasks]]
+title = "Sprint planning"
+type = "task"
+priority = 1
+
+[[molecule.phases.tasks]]
+title = "Create stories with context"
+type = "task"
+priority = 1
+
+[[molecule.phases.tasks]]
+title = "Implement stories"
+type = "task"
+priority = 1
+
+[[molecule.phases.tasks]]
+title = "Code review"
+type = "task"
+priority = 2
+
+[[molecule.phases.tasks]]
+title = "Epic retrospective"
+type = "task"
+priority = 3

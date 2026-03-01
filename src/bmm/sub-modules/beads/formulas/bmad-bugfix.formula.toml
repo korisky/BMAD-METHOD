@@ -1,0 +1,53 @@
+# BMAD Bugfix Molecule Formula
+# Poured via: bd mol pour bmad-bugfix --args "title=Bug Description"
+
+[formula]
+name = "bmad-bugfix"
+version = "0.2.0"
+description = "BMAD methodology bugfix workflow — triage through verification"
+
+[molecule]
+type = "epic"
+title = "Fix: {{title}}"
+
+[[molecule.phases]]
+name = "triage"
+gate = "triage-complete"
+
+[[molecule.phases.tasks]]
+title = "Reproduce and document the bug"
+type = "task"
+priority = 0
+
+[[molecule.phases.tasks]]
+title = "Determine scale level and impact"
+type = "task"
+priority = 1
+
+[[molecule.phases]]
+name = "fix"
+gate = "fix-complete"
+
+[[molecule.phases.tasks]]
+title = "Implement fix"
+type = "task"
+priority = 0
+
+[[molecule.phases.tasks]]
+title = "Write regression tests"
+type = "task"
+priority = 1
+
+[[molecule.phases]]
+name = "verification"
+gate = "verification-complete"
+
+[[molecule.phases.tasks]]
+title = "Code review"
+type = "task"
+priority = 1
+
+[[molecule.phases.tasks]]
+title = "Verify fix in target context"
+type = "task"
+priority = 1

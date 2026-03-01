@@ -15,6 +15,7 @@ ignores:
   - sample-project/**
   - test-project-install/**
   - z*/**
+  - .worktrees/**
 
 # Rule configuration
 config:

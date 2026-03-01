@@ -1,4 +1,5 @@
 const path = require('node:path');
+const os = require('node:os');
 const fs = require('fs-extra');
 const { Detector } = require('./detector');
 const { Manifest } = require('./manifest');
@@ -1304,6 +1305,11 @@ class Installer {
       }
 
       await prompts.tasks(postIdeTasks);
+
+      // Beads integration setup (if enabled in config)
+      if (config.enableBeads) {
+        await this.runBeadsSetup(projectDir, config, addResult);
+      }
 
       // Retrieve restored file info for summary
       const customFiles = config._restoredCustomFiles || [];
@@ -3156,6 +3162,265 @@ class Installer {
       validCustomModules,
       keptModulesWithoutSources,
     };
+  }
+
+  // ============================================
+  // Beads Integration Methods
+  // ============================================
+
+  /**
+   * Run Beads integration setup
+   * Installs .bmad/ methodology, BMAD_MANIFEST.md, formulas, and aliases
+   * @param {string} projectDir - Target project directory
+   * @param {Object} config - Installation config (enableBeads, installFormulas, generateManifest)
+   * @param {Function} addResult - Result tracking function
+   */
+  async runBeadsSetup(projectDir, config, addResult) {
+    try {
+      await prompts.log.step('Setting up Beads integration...');
+
+      // Find beads sub-module source
+      const beadsSourceDir = this._getBeadsSourceDir();
+      if (!beadsSourceDir) {
+        addResult('Beads integration', 'warn', 'beads sub-module source not found');
+        return;
+      }
+
+      // Install .bmad/ methodology directory
+      await this.installBmadMethodology(projectDir, beadsSourceDir);
+      addResult('.bmad/ methodology', 'ok', 'installed');
+
+      // Generate BMAD_MANIFEST.md
+      if (config.generateManifest !== false) {
+        await this.generateBmadManifest(projectDir, beadsSourceDir);
+        addResult('BMAD_MANIFEST.md', 'ok', 'generated');
+      }
+
+      // Install molecule formulas
+      if (config.installFormulas !== false) {
+        await this.installFormulas(projectDir, beadsSourceDir);
+        addResult('Molecule formulas', 'ok', 'installed');
+      }
+
+      // Set up BMAD_HOME global directory
+      if (config.setupBmadHome) {
+        await this.setupBmadHome(beadsSourceDir);
+        addResult('BMAD_HOME (~/.bmad-v6)', 'ok', 'created');
+      }
+
+      // Install aliases
+      await this.installBeadsAliases(projectDir, beadsSourceDir);
+      addResult('Beads aliases', 'ok', 'installed');
+
+      // Install AGENTS.md template
+      await this.installAgentsMd(projectDir, beadsSourceDir);
+      addResult('AGENTS.md', 'ok', 'installed');
+
+      // Validate
+      const valid = await this.validateBeadsInstallation(projectDir);
+      if (!valid) {
+        addResult('Beads validation', 'warn', 'some components missing');
+      }
+    } catch (error) {
+      addResult('Beads integration', 'error', error.message);
+    }
+  }
+
+  /**
+   * Get the beads sub-module source directory
+   * @returns {string|null} Path to beads source or null
+   */
+  _getBeadsSourceDir() {
+    // Try src/bmm/sub-modules/beads/ (current branch layout)
+    const projectRoot = getProjectRoot();
+    const candidates = [
+      path.join(projectRoot, 'src', 'bmm', 'sub-modules', 'beads'),
+      path.join(projectRoot, 'src', 'modules', 'bmm', 'sub-modules', 'beads'),
+    ];
+
+    for (const candidate of candidates) {
+      if (fs.pathExistsSync(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Install .bmad/ directory with agent methodology
+   * @param {string} projectDir - Target project directory
+   * @param {string} sourceDir - Beads sub-module source directory
+   */
+  async installBmadMethodology(projectDir, sourceDir) {
+    const bmadDir = path.join(projectDir, '.bmad');
+
+    // Create directory structure
+    await fs.ensureDir(path.join(bmadDir, 'personas'));
+    await fs.ensureDir(path.join(bmadDir, 'templates'));
+    await fs.ensureDir(path.join(bmadDir, 'methodology'));
+
+    // Copy SKILL.md
+    const skillSrc = path.join(sourceDir, 'SKILL.md.template');
+    if (await fs.pathExists(skillSrc)) {
+      await fs.copy(skillSrc, path.join(bmadDir, 'SKILL.md'));
+    }
+
+    // Copy personas
+    const personasSrc = path.join(sourceDir, 'personas');
+    if (await fs.pathExists(personasSrc)) {
+      await fs.copy(personasSrc, path.join(bmadDir, 'personas'), { overwrite: true });
+    }
+
+    // Copy templates
+    const templatesSrc = path.join(sourceDir, 'templates');
+    if (await fs.pathExists(templatesSrc)) {
+      await fs.copy(templatesSrc, path.join(bmadDir, 'templates'), { overwrite: true });
+    }
+
+    // Copy methodology
+    const methodologySrc = path.join(sourceDir, 'methodology');
+    if (await fs.pathExists(methodologySrc)) {
+      await fs.copy(methodologySrc, path.join(bmadDir, 'methodology'), { overwrite: true });
+    }
+  }
+
+  /**
+   * Generate BMAD_MANIFEST.md from template
+   * @param {string} projectDir - Target project directory
+   * @param {string} sourceDir - Beads sub-module source directory
+   */
+  async generateBmadManifest(projectDir, sourceDir) {
+    const templatePath = path.join(sourceDir, 'BMAD_MANIFEST.md.template');
+    const targetPath = path.join(projectDir, 'BMAD_MANIFEST.md');
+
+    if (await fs.pathExists(templatePath)) {
+      let content = await fs.readFile(templatePath, 'utf8');
+      const bmadHome = process.env.BMAD_HOME || '~/.bmad-v6';
+      content = content.replaceAll('{{BMAD_HOME}}', bmadHome);
+      await fs.writeFile(targetPath, content, 'utf8');
+    }
+  }
+
+  /**
+   * Install molecule formulas to .beads/formulas/
+   * @param {string} projectDir - Target project directory
+   * @param {string} sourceDir - Beads sub-module source directory
+   */
+  async installFormulas(projectDir, sourceDir) {
+    const formulasSrc = path.join(sourceDir, 'formulas');
+    const formulasTarget = path.join(projectDir, '.beads', 'formulas');
+
+    if (await fs.pathExists(formulasSrc)) {
+      await fs.ensureDir(formulasTarget);
+      await fs.copy(formulasSrc, formulasTarget, { overwrite: true });
+    }
+  }
+
+  /**
+   * Set up BMAD_HOME global directory (~/.bmad-v6/)
+   * Copies methodology files for cross-project sharing
+   * @param {string} sourceDir - Beads sub-module source directory
+   */
+  async setupBmadHome(sourceDir) {
+    const homeDir = process.env.BMAD_HOME || path.join(os.homedir(), '.bmad-v6');
+
+    await fs.ensureDir(path.join(homeDir, 'personas'));
+    await fs.ensureDir(path.join(homeDir, 'templates'));
+    await fs.ensureDir(path.join(homeDir, 'methodology'));
+
+    // Copy SKILL.md
+    const skillSrc = path.join(sourceDir, 'SKILL.md.template');
+    if (await fs.pathExists(skillSrc)) {
+      await fs.copy(skillSrc, path.join(homeDir, 'SKILL.md'), { overwrite: true });
+    }
+
+    // Copy personas, templates, methodology
+    for (const subdir of ['personas', 'templates', 'methodology']) {
+      const src = path.join(sourceDir, subdir);
+      if (await fs.pathExists(src)) {
+        await fs.copy(src, path.join(homeDir, subdir), { overwrite: true });
+      }
+    }
+  }
+
+  /**
+   * Install beads aliases to .beads/lib/
+   * @param {string} projectDir - Target project directory
+   * @param {string} sourceDir - Beads sub-module source directory
+   */
+  async installBeadsAliases(projectDir, sourceDir) {
+    const aliasesSrc = path.join(sourceDir, 'beads-aliases.sh');
+    const targetDir = path.join(projectDir, '.beads', 'lib');
+    const targetFile = path.join(targetDir, 'bmad-aliases.sh');
+
+    if (await fs.pathExists(aliasesSrc)) {
+      await fs.ensureDir(targetDir);
+      await fs.copy(aliasesSrc, targetFile, { overwrite: true });
+    }
+
+    // Write version file
+    const configPath = path.join(sourceDir, 'config.yaml');
+    if (await fs.pathExists(configPath)) {
+      const configContent = await fs.readFile(configPath, 'utf8');
+      const versionMatch = configContent.match(/version:\s*["']?([^"'\n]+)/);
+      const version = versionMatch ? versionMatch[1].trim() : '0.2.0';
+      await fs.writeFile(path.join(projectDir, '.beads', '.bmad-version'), version, 'utf8');
+    }
+  }
+
+  /**
+   * Install AGENTS.md from template (idempotent managed-block update)
+   * @param {string} projectDir - Target project directory
+   * @param {string} sourceDir - Beads sub-module source directory
+   */
+  async installAgentsMd(projectDir, sourceDir) {
+    const templatePath = path.join(sourceDir, 'AGENTS.md.template');
+    const targetPath = path.join(projectDir, '.beads', 'AGENTS.md');
+
+    if (!(await fs.pathExists(templatePath))) return;
+
+    await fs.ensureDir(path.join(projectDir, '.beads'));
+
+    if (!(await fs.pathExists(targetPath))) {
+      // First install — copy template directly
+      await fs.copy(templatePath, targetPath);
+      return;
+    }
+
+    // Update existing — replace managed block
+    const templateContent = await fs.readFile(templatePath, 'utf8');
+    const managedMatch = templateContent.match(/<!-- BMAD-BEADS:START -->[\s\S]*?<!-- BMAD-BEADS:END -->/);
+    if (!managedMatch) return;
+
+    let existingContent = await fs.readFile(targetPath, 'utf8');
+    if (existingContent.includes('<!-- BMAD-BEADS:START -->')) {
+      // Replace existing managed block
+      existingContent = existingContent.replace(/<!-- BMAD-BEADS:START -->[\s\S]*?<!-- BMAD-BEADS:END -->/, managedMatch[0]);
+    } else {
+      // Append managed block
+      existingContent += '\n\n' + managedMatch[0];
+    }
+    await fs.writeFile(targetPath, existingContent, 'utf8');
+  }
+
+  /**
+   * Validate Beads installation has required components
+   * @param {string} projectDir - Target project directory
+   * @returns {Promise<boolean>} True if valid
+   */
+  async validateBeadsInstallation(projectDir) {
+    const checks = [
+      path.join(projectDir, '.bmad', 'SKILL.md'),
+      path.join(projectDir, 'BMAD_MANIFEST.md'),
+      path.join(projectDir, '.beads', 'lib', 'bmad-aliases.sh'),
+    ];
+
+    for (const check of checks) {
+      if (!(await fs.pathExists(check))) {
+        return false;
+      }
+    }
+    return true;
   }
 }
 

@@ -1,0 +1,40 @@
+# Beads Integration Sub-module for BMM (Agent-First)
+# Version 0.2.0 — unified state, native bd commands, JIT methodology
+
+name: "Beads Integration"
+description: "Agent-first workflow coordination with unified work state management"
+version: "0.2.0"
+author: "BMAD + Beads Integration"
+
+# This is a sub-module, not a standalone module
+submodule: true
+
+# IDE compatibility
+compatible_ides:
+  - claude-code
+  - cursor
+  - windsurf
+  - roo
+  - openclaw
+
+# Installation requirements
+requires:
+  - bd # Beads CLI must be available
+
+# What this sub-module provides
+features:
+  - triage # 5-question scale-level determination
+  - jit_loading # On-demand methodology loading via SKILL.md
+  - molecules # BMAD phases as Beads formulas
+  - gates # Phase transition quality gates
+  - worktrees # Git worktree support for sync branches
+  - work_claiming # Prevent concurrent task edits
+  - runtime_decisions # Capture decisions outside workflows
+  - blocker_tracking # Track external impediments
+  - halt_persistence # HALT conditions survive context clear
+  - auto_sync # Git hooks for automatic Beads sync
+
+# Execution mode support
+execution_modes:
+  - openclaw # OpenClaw JARVIS agent framework
+  - standalone-cli # Direct CLI usage (Claude Code, Cursor, etc.)

@@ -1,5 +1,6 @@
 const path = require('node:path');
 const os = require('node:os');
+const { execSync } = require('node:child_process');
 const fs = require('fs-extra');
 const { CLIUtils } = require('./cli-utils');
 const { CustomHandler } = require('../installers/lib/custom/handler');
@@ -68,17 +69,27 @@ class UI {
     let legacyBmadPath = null;
 
     // First check for legacy .bmad folder (instead of _bmad)
-    // Only check if directory exists
+    // A .bmad folder with SKILL.md is the NEW agent methodology directory (v0.2.0+),
+    // NOT legacy. Only treat .bmad as legacy if it has v4 markers (_cfg subfolder)
+    // or lacks the SKILL.md marker.
     if (await fs.pathExists(confirmedDirectory)) {
       const entries = await fs.readdir(confirmedDirectory, { withFileTypes: true });
       for (const entry of entries) {
         if (entry.isDirectory() && (entry.name === '.bmad' || entry.name === 'bmad')) {
+          const candidatePath = path.join(confirmedDirectory, entry.name);
+          const skillPath = path.join(candidatePath, 'SKILL.md');
+          const cfgPath = path.join(candidatePath, '_cfg');
+
+          // New agent methodology directory — skip legacy detection
+          if (await fs.pathExists(skillPath)) {
+            break;
+          }
+
+          // Legacy .bmad (v4 or alpha) — no SKILL.md
           hasLegacyBmadFolder = true;
-          legacyBmadPath = path.join(confirmedDirectory, entry.name);
+          legacyBmadPath = candidatePath;
           bmadDir = legacyBmadPath;
 
-          // Check if it has _cfg folder
-          const cfgPath = path.join(legacyBmadPath, '_cfg');
           if (await fs.pathExists(cfgPath)) {
             hasLegacyCfg = true;
           }
@@ -450,6 +461,9 @@ class UI {
 
         const coreConfig = await this.collectCoreConfig(confirmedDirectory, options);
 
+        // Beads integration prompts
+        const beadsConfig = await this.promptBeadsIntegration(options);
+
         return {
           actionType: 'update',
           directory: confirmedDirectory,
@@ -460,6 +474,7 @@ class UI {
           coreConfig: coreConfig,
           customContent: customModuleResult.customContentConfig,
           skipPrompts: options.yes || false,
+          ...beadsConfig,
         };
       }
     }
@@ -566,6 +581,9 @@ class UI {
     let toolSelection = await this.promptToolSelection(confirmedDirectory, options);
     const coreConfig = await this.collectCoreConfig(confirmedDirectory, options);
 
+    // Beads integration prompts
+    const beadsConfig = await this.promptBeadsIntegration(options);
+
     return {
       actionType: 'install',
       directory: confirmedDirectory,
@@ -576,6 +594,7 @@ class UI {
       coreConfig: coreConfig,
       customContent: customContentConfig,
       skipPrompts: options.yes || false,
+      ...beadsConfig,
     };
   }
 
@@ -584,6 +603,62 @@ class UI {
    * Uses a split prompt approach:
    *   1. Recommended tools - standard multiselect for preferred tools
    *   2. Additional tools - autocompleteMultiselect with search capability
+   * Prompt for Beads integration options
+   * @param {Object} options - Command-line options
+   * @returns {Object} Beads configuration { enableBeads, installFormulas, generateManifest }
+   */
+  async promptBeadsIntegration(options = {}) {
+    // Skip prompts in non-interactive mode
+    if (options.yes) {
+      return { enableBeads: false };
+    }
+
+    // Check if bd CLI is available
+    let bdAvailable = false;
+    try {
+      execSync('bd --version', { stdio: 'ignore' });
+      bdAvailable = true;
+    } catch {
+      // bd not installed
+    }
+
+    const enableBeads = await prompts.confirm({
+      message: 'Enable Beads integration? (agent-first workflow coordination)',
+      initialValue: bdAvailable,
+    });
+
+    if (prompts.isCancel(enableBeads) || !enableBeads) {
+      return { enableBeads: false };
+    }
+
+    if (!bdAvailable) {
+      await prompts.log.warn('Beads CLI (bd) not found. Install it before using Beads features: https://github.com/steveyegge/beads');
+    }
+
+    const setupBmadHome = await prompts.confirm({
+      message: 'Set up BMAD_HOME? (create ~/.bmad-v6/ global methodology directory)',
+      initialValue: false,
+    });
+
+    const installFormulas = await prompts.confirm({
+      message: 'Install molecule formulas? (BMAD workflow templates for Beads)',
+      initialValue: true,
+    });
+
+    const generateManifest = await prompts.confirm({
+      message: 'Generate BMAD_MANIFEST.md? (recommended — universal agent discovery)',
+      initialValue: true,
+    });
+
+    return {
+      enableBeads: true,
+      setupBmadHome: prompts.isCancel(setupBmadHome) ? false : setupBmadHome,
+      installFormulas: prompts.isCancel(installFormulas) ? true : installFormulas,
+      generateManifest: prompts.isCancel(generateManifest) ? true : generateManifest,
+    };
+  }
+
+  /**
    * @param {string} projectDir - Project directory to check for existing IDEs
    * @param {Object} options - Command-line options
    * @returns {Object} Tool configuration
