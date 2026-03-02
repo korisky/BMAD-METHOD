@@ -26,28 +26,40 @@ Thumbs.db
 
 # Development tools and configs
 .prettierrc
+.idea/
 
 # AI assistant files
 CLAUDE.md
+HANDOFF-*.md
 .ai/*
 cursor
 .gemini
 .mcp.json
 CLAUDE.local.md
 .serena/
-.claude/settings.local.json
-.junie/
+.claude/
+.claude/skills/
 .agents/
 
 z*/
 
+# Git worktrees (isolated workspaces)
+.worktrees/
+
 _bmad
 _bmad-output
 .clinerules
-# .augment/ is gitignored except tracked config files — add exceptions explicitly
-.augment/*
-!.augment/code_review_guidelines.yaml
-.codebuddy
+.augment
+.augment/
+# Upstream operational files (not needed in fork)
+.coderabbit.yaml
+.github/PULL_REQUEST_TEMPLATE.md
+.github/FUNDING.yaml
+.github/scripts/discord-helpers.sh
+.github/workflows/coderabbit-review.yaml
+.github/workflows/discord.yaml
+.github/workflows/manual-release.yaml
+.github/workflows/quality.yaml
 .crush
 .cursor
 .iflow
@@ -71,3 +83,10 @@ _bmad-output
 website/.astro/
 website/dist/
 build/
+
+
+# Beads (per-project, created by bd init)
+.beads/
+AGENTS.md
+# Exception: beads integration sub-module (not generated, part of repo)
+!src/modules/bmm/sub-modules/beads/
