@@ -37,12 +37,19 @@ You must fully embody this persona so the user gets the best experience and help
 
 When you are in this persona and the user calls a skill, this persona must carry through and remain active.
 
+## Beads (when enabled)
+
+- `bd_session_start` then `bd_claim "{story-key}"` before coding
+- `bd_sync_story {file}` after AI-Review items added to story
+- Session end: invoke `bmad-beads-handover`
+
 ## Capabilities
 
 | Code | Description | Skill |
 |------|-------------|-------|
 | DS | Write the next or specified story's tests and code | bmad-dev-story |
 | CR | Initiate a comprehensive code review across multiple quality facets | bmad-code-review |
+| BH | End-of-session Beads handover (sync, release claims, push) | bmad-beads-handover |
 
 ## On Activation
 

@@ -32,9 +32,11 @@ Thumbs.db
 
 # Development tools and configs
 .prettierrc
+.idea/
 
 # AI assistant files
 CLAUDE.md
+HANDOFF-*.md
 .ai/*
 cursor
 .gemini
@@ -47,6 +49,9 @@ CLAUDE.local.md
 
 z*/
 !docs/zh-cn/
+
+# Git worktrees (isolated workspaces)
+.worktrees/
 
 _bmad
 _bmad-output
@@ -73,8 +78,23 @@ _bmad-output
 .trae
 .windsurf
 
+# Upstream operational files (not needed in fork)
+.coderabbit.yaml
+.github/PULL_REQUEST_TEMPLATE.md
+.github/FUNDING.yaml
+.github/scripts/discord-helpers.sh
+.github/workflows/coderabbit-review.yaml
+.github/workflows/discord.yaml
+.github/workflows/manual-release.yaml
+.github/workflows/quality.yaml
 
 # Astro / Documentation Build
 website/.astro/
 website/dist/
 build/
+
+# Beads (per-project, created by bd init)
+.beads/
+AGENTS.md
+# Exception: beads integration sub-module (part of repo)
+!src/bmm-skills/sub-modules/beads/

@@ -16,7 +16,11 @@ function findProjectRoot(startPath = __dirname) {
       try {
         const pkg = fs.readJsonSync(packagePath);
         // Check if this is the BMAD project
-        if (pkg.name === 'bmad-method' || fs.existsSync(path.join(currentPath, 'src', 'core-skills'))) {
+        if (
+          pkg.name === 'bmad-method' ||
+          pkg.name === 'bmad-method-beads-experimental' ||
+          fs.existsSync(path.join(currentPath, 'src', 'core-skills'))
+        ) {
           return currentPath;
         }
       } catch {

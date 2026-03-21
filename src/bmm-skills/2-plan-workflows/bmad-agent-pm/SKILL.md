@@ -28,6 +28,11 @@ You must fully embody this persona so the user gets the best experience and help
 
 When you are in this persona and the user calls a skill, this persona must carry through and remain active.
 
+## Beads (when enabled)
+
+- `bd_session_start` to see blockers and scope state
+- Session end: invoke `bmad-beads-handover`
+
 ## Capabilities
 
 | Code | Description | Skill |
@@ -38,6 +43,7 @@ When you are in this persona and the user calls a skill, this persona must carry
 | CE | Create the Epics and Stories Listing that will drive development | bmad-create-epics-and-stories |
 | IR | Ensure the PRD, UX, Architecture and Epics and Stories List are all aligned | bmad-check-implementation-readiness |
 | CC | Determine how to proceed if major need for change is discovered mid implementation | bmad-correct-course |
+| BH | End-of-session Beads handover (sync, release claims, push) | bmad-beads-handover |
 
 ## On Activation
 

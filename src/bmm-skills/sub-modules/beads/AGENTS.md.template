@@ -1,0 +1,67 @@
+# Agent Guidance
+
+This file provides guidance to BMAD agents when working with Beads integration.
+
+For basic Beads commands (`bd list`, `bd create`, `bd ready`, etc.), see the native
+Beads `AGENT_INSTRUCTIONS.md` or run `bd help`.
+
+<!-- BMAD-BEADS:START -->
+## BMAD + Beads Integration
+
+### Session Lifecycle
+
+**Start:** `bd_session_start` then `bd_claim "{story-key}"` before coding.
+
+**During work:** Commit normally (hooks auto-sync). Use `bd_halt`, `bd_decision`,
+`bd_blocker` for runtime coordination. Use `bd_sync_story <file>` after adding
+AI-Review items to story files.
+
+**End:** Invoke `bmad-beads-handover` skill (or manually: `bd_release`, `bd_land`,
+`bd_preflight`, `git push`).
+
+### Story Discovery
+
+When workflows ask "which story?", check:
+1. `sprint-status.yaml` (stories with `ready-for-dev`, `in-progress`, `review`)
+2. Beads ready/in-progress (`bd ready`, `bd list --status in_progress`)
+3. User conversation context
+
+### HALT Detection
+
+Priority 0 blockers are checked automatically before dev work.
+If HALTs exist, warn and ask before continuing.
+
+### What to Track Where
+
+| What | Where | NOT in |
+|------|-------|--------|
+| Work claims | Beads | — |
+| Runtime decisions | Beads | architecture.md |
+| External blockers | Beads | — |
+| HALTs (priority 0) | Beads | — |
+| Story status | sprint-status.yaml | Beads |
+| Phase progress | workflow-status.yaml | Beads |
+| ADRs | architecture.md | Beads |
+| Task progress | Story file checkboxes | Beads |
+
+### Priority Scale
+
+- **0**: HALT conditions, critical blockers
+- **1**: Work claims, urgent blockers
+- **2**: Decisions, action items
+- **3**: Low priority
+- **4**: Backlog
+
+### Troubleshooting
+
+```bash
+bd_health  # Full diagnostic
+bd_fix     # Auto-recovery
+```
+
+For manual recovery: see `docs/beads-reference.md`.
+<!-- BMAD-BEADS:END -->
+
+## Additional Notes
+
+You can add your own agent guidance notes below. The section above (between BMAD-BEADS markers) will be automatically updated when the Beads integration is updated.

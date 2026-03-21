@@ -31,6 +31,8 @@ If `{spec_file}` exists and contains a Tasks/Subtasks section, append a `### Rev
 
 Also append each `defer` finding to `{deferred_work_file}` under a heading `## Deferred from: code review ({date})`. If `{spec_file}` is set, include its basename in the heading (e.g., `code review of story-3.3 (2026-03-18)`). One bullet per finding with description.
 
+After adding Review Follow-ups: `bd_sync_story {spec_file}` (if Beads enabled)
+
 ### 3. Present summary
 
 Announce what was written:

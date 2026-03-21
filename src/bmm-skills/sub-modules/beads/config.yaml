@@ -1,0 +1,31 @@
+# Beads Integration Sub-module for BMM
+# This enables runtime coordination and context persistence
+
+name: "Beads Integration"
+description: "Runtime coordination, blockers, and cross-session memory"
+version: "0.2.0"
+author: "BMAD + Beads Integration"
+
+# This is a sub-module, not a standalone module
+submodule: true
+
+# IDE compatibility
+compatible_ides:
+  - claude-code
+  - cursor
+  - windsurf
+  - roo
+
+# Installation requirements
+requires:
+  - bd # Beads CLI must be available
+
+# What this sub-module provides
+features:
+  - work_claiming # Prevent concurrent story edits
+  - runtime_decisions # Capture decisions outside workflows
+  - blocker_tracking # Track external impediments
+  - halt_persistence # HALT conditions survive context clear
+  - action_items # Cross-epic action item tracking
+  - auto_sync # Git hooks for automatic Beads sync
+  - sprint_status_display # Sprint-status.yaml summary in session start
