@@ -130,6 +130,20 @@ rm package-lock.json node_modules -rf
 npm install  # Regenerate with fork identity
 ```
 
+## Version Tracking
+
+| Field | Value |
+|-------|-------|
+| **Upstream base** | BMAD-METHOD v6.2.1 |
+| **Fork version** | `6.2.1-beads.0.3.0` |
+| **Last upstream sync** | 2026-03-27 |
+| **Dev branch** | `ver_0.3.0` |
+| **Beads sub-module** | see `src/bmm-skills/sub-modules/beads/config.yaml` |
+
+**Version format:** `<upstream>-beads.<major>.<minor>.<patch>`
+
+Update this table after each upstream sync or Beads version bump.
+
 ## Testing Requirement
 
 After any upstream sync, **MUST** test installation in a clean target project:
