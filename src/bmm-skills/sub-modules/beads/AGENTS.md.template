@@ -21,36 +21,21 @@ AI-Review items to story files.
 
 ### Story Discovery
 
-When workflows ask "which story?", check:
-1. `sprint-status.yaml` (stories with `ready-for-dev`, `in-progress`, `review`)
-2. Beads ready/in-progress (`bd ready`, `bd list --status in_progress`)
-3. User conversation context
+Check: `sprint-status.yaml` → `bd ready` / `bd list --status in_progress` → conversation context.
 
 ### HALT Detection
 
 Priority 0 blockers are checked automatically before dev work.
 If HALTs exist, warn and ask before continuing.
 
-### What to Track Where
+### Priorities
 
-| What | Where | NOT in |
-|------|-------|--------|
-| Work claims | Beads | — |
-| Runtime decisions | Beads | architecture.md |
-| External blockers | Beads | — |
-| HALTs (priority 0) | Beads | — |
-| Story status | sprint-status.yaml | Beads |
-| Phase progress | workflow-status.yaml | Beads |
-| ADRs | architecture.md | Beads |
-| Task progress | Story file checkboxes | Beads |
+0=HALT/critical, 1=claims/urgent, 2=decisions/actions, 3=low, 4=backlog.
 
-### Priority Scale
+### Tracking
 
-- **0**: HALT conditions, critical blockers
-- **1**: Work claims, urgent blockers
-- **2**: Decisions, action items
-- **3**: Low priority
-- **4**: Backlog
+See `docs/beads-reference.md` — "What to Track Where" table for the canonical reference
+on what goes in Beads vs story files vs workflow-status.yaml.
 
 ### Troubleshooting
 

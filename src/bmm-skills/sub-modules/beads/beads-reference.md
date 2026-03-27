@@ -1,6 +1,6 @@
 # BMAD + Beads Reference
 
-> Single reference for the BMAD + Beads integration (v6.2.0 skills architecture).
+> Single reference for the BMAD + Beads integration (v6.2.1 skills architecture).
 > For agent-specific guidance, see `.beads/AGENTS.md`.
 
 ---
@@ -18,22 +18,14 @@
 
 ---
 
-## Native Beads Commands (Use Directly)
-
-These replace the wrapper aliases from earlier BMAD versions:
+## Native Beads Commands
 
 ```bash
-bd list                              # All items
-bd list --type blocker --status open # Open blockers
-bd list --type decision              # Decisions
-bd list --priority 0 --status open   # HALTs (P0)
-bd list --status in_progress         # Active work
-bd ready                             # Ready work queue
-bd create --type blocker "title"     # Create blocker
-bd create --type decision "title"    # Create decision
-bd create --type task "title"        # Create task
-bd doctor                            # Basic health check
-bd help                              # Full native help
+bd list [--type TYPE] [--status STATUS] [--priority N]  # Filter items (blocker/decision/task, open/in_progress, 0-4)
+bd ready                   # Ready work queue
+bd create --type TYPE "t"  # Create blocker/decision/task
+bd doctor                  # Basic health check
+bd help                    # Full native help
 ```
 
 ---
@@ -75,20 +67,10 @@ git push               # Push when all green
 
 ---
 
-## Git Sync Architecture
+## Git Sync
 
-### The Problem
-
-Beads daemon commits to `beads-sync` via a separate worktree. Without regular sync, branches diverge — `beads-sync` has tracking data that `main` and dev branches lack.
-
-### Three-Way Sync (`bd_land`)
-
-```
-beads-sync → main → current-branch
-```
-
-1. **beads-sync → main**: Uses `bd sync --merge` (native Beads, `--no-ff`). Falls back to raw git merge on older Beads.
-2. **main → current branch**: BMAD's unique value — merges main into your working branch with `--no-ff`.
+Three-way sync via `bd_land`: `beads-sync → main → current-branch` (both merges use `--no-ff`).
+See `SYNC_FLOW_DIAGRAM.md` for detailed architecture and error handling flows.
 
 ### Auto-Sync Levels
 
@@ -98,11 +80,7 @@ beads-sync → main → current-branch
 | Pre-push | Before `git push` | `bd_auto_land` (configurable) | Depends on mode |
 | Handover | Manual session end | `bd_land` (always) | Yes |
 
-### Auto-Sync Modes
-
-```bash
-bd_config_sync <mode>
-```
+### Auto-Sync Modes (`bd_config_sync <mode>`)
 
 | Mode | Behavior |
 |------|----------|
@@ -111,18 +89,14 @@ bd_config_sync <mode>
 | `block` | Refuse push until synced |
 | `off` | Disable checks |
 
-### Workflow Modes
+### Workflow Modes (`bd_config_workflow <mode>`)
 
-```bash
-bd_config_workflow <mode>
-```
-
-| Mode | Description | When to Use |
-|------|-------------|-------------|
-| `mixed` (default) | Smart detection based on daemon status | Human & Code Agent collaboration |
-| `agent` | Always sync beads-sync (strict) | Pure Code Agent workflows |
-| `human` | Never sync beads-sync | Pure human workflows (no daemon) |
-| `auto` | Automatic mode switching | Let system decide based on daemon |
+| Mode | When to Use |
+|------|-------------|
+| `mixed` (default) | Human & Code Agent collaboration (smart daemon detection) |
+| `agent` | Pure Code Agent workflows (always sync beads-sync) |
+| `human` | Pure human workflows, no daemon |
+| `auto` | Let system decide based on daemon |
 
 ---
 
@@ -140,54 +114,26 @@ bd_sync_story implementation_artifacts/story-1-2-auth.md
 
 **Idempotency:** Each task is tagged with a content hash. Re-running sync skips existing tasks.
 
----
-
-## Sprint Status Integration
-
-`bd_session_start` automatically displays a summary from `sprint-status.yaml` if found:
-
-```
-Sprint Status:
-  3 backlog, 2 ready, 1 active, 0 review, 4 done
-```
-
-This is read-only — story status lives in `sprint-status.yaml`, not Beads.
+Sprint status display: `bd_session_start` reads `sprint-status.yaml` if present (read-only summary).
 
 ---
 
 ## Troubleshooting
 
-### `bd_health` — Full Diagnostic
-
-Checks: git repo, `.beads/` dir, daemon status, branch sync, active claims, HALTs, config.
-
-### `bd_fix` — Auto-Recovery
-
-Handles: worktree on wrong branch, branch sync needed.
+| Command | Purpose |
+|---------|---------|
+| `bd_health` | Full diagnostic: repo, `.beads/`, daemon, branches, claims, HALTs, config |
+| `bd_fix` | Auto-recovery: worktree branch fixes, branch sync |
+| `bd_preflight` | Pre-push check: clean tree, synced branches, no claims |
 
 ### Manual Recovery (When `bd_fix` Fails)
 
 ```bash
-# 1. Diagnose
-git log main..beads-sync    # What's in beads-sync but not main?
-git log beads-sync..main    # What's in main but not beads-sync?
-
-# 2. Manual merge (beads-sync → main)
-git checkout main
-git merge beads-sync --no-ff -m "manual merge: sync beads tracking"
-
-# 3. If conflicts in .beads/issues.jsonl — ALWAYS prefer beads-sync version
-git checkout --theirs .beads/issues.jsonl
-git add .beads/issues.jsonl && git commit
-
-# 4. Push and sync to dev
-git push origin main
-git checkout <your-branch>
-git merge main
-git push origin <your-branch>
-
-# 5. Verify
-bd_health
+git log main..beads-sync                    # Diagnose divergence
+git checkout main && git merge beads-sync --no-ff  # Manual sync
+# If .beads/issues.jsonl conflicts: git checkout --theirs .beads/issues.jsonl
+git push origin main && git checkout <your-branch> && git merge main
+bd_health                                   # Verify
 ```
 
 ### Push Blocked with "daemon using --auto-push"?
@@ -196,12 +142,6 @@ bd_health
 bd daemon --stop
 bd daemon --start --interval 5s --auto-commit --auto-pull
 ```
-
-### Prevention
-
-- Run `bd_land` at every session end (or use `bmad-beads-handover` skill)
-- Use auto-sync: `bd_config_sync auto` or `bd_config_sync warning`
-- Check health before push: `bd_preflight`
 
 ---
 

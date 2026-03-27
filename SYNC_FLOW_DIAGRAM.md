@@ -51,26 +51,17 @@
 │   └─ If synced: pass through                                           │
 │                                                                         │
 │   MODE: auto                                                            │
-│   ├─ Check divergence                                                  │
 │   ├─ If diverged: Auto-run bd_land → push continues                    │
 │   └─ If synced: pass through                                           │
 │                                                                         │
 │   MODE: block                                                           │
-│   ├─ Check divergence                                                  │
 │   ├─ If diverged: "Push blocked. Run bd_land" → exit 1                 │
 │   └─ If synced: pass through                                           │
 │                                                                         │
-│   MODE: off                                                             │
-│   └─ Skip check entirely → pass through                                │
+│   MODE: off → Skip check entirely → pass through                       │
 │                                                                         │
 │ Result: Push only succeeds if branches synced (or mode=off)            │
 └─────────────────────────────────────────────────────────────────────────┘
-                                     │
-                                     ▼
-                           (push to remote succeeds)
-                                     │
-                                     ▼
-                         (continue working or end session)
                                      │
                                      ▼
                           [HO] Handover Workflow
@@ -81,7 +72,6 @@
 ├─────────────────────────────────────────────────────────────────────────┤
 │ Trigger:  Manual [HO] workflow Step 3                                  │
 │ Action:   bd_land (always execute, not conditional)                    │
-│ Purpose:  Guarantee session-end sync                                   │
 │                                                                         │
 │ Flow:                                                                   │
 │   Step 1: bd_release <claim-id>  (release claims)                      │
@@ -96,104 +86,20 @@
 
 ---
 
-## Configuration Decision Tree
+## Auto-Sync Mode Selection
 
-```
-                        Which mode should I use?
-                                 │
-                                 ▼
-                ┌────────────────┴────────────────┐
-                │                                  │
-         Learning workflow?              Experienced user?
-         Want manual control?             Trust automation?
-                │                                  │
-                ▼                                  ▼
-        ┌──────────────┐                  ┌──────────────┐
-        │   WARNING    │                  │     AUTO     │
-        │   (default)  │                  │  (seamless)  │
-        └──────────────┘                  └──────────────┘
-                │                                  │
-         Asks: "Run bd_land?"              Auto-syncs silently
-         Before push                       No prompts
-
-
-                ┌────────────────┴────────────────┐
-                │                                  │
-        Team enforcement?                 Solo work?
-        Strict discipline?                No daemon?
-                │                                  │
-                ▼                                  ▼
-        ┌──────────────┐                  ┌──────────────┐
-        │    BLOCK     │                  │     OFF      │
-        │  (enforced)  │                  │  (disabled)  │
-        └──────────────┘                  └──────────────┘
-                │                                  │
-         Blocks push until synced          Skips all checks
-         No bypass allowed                 Manual sync only
-```
-
----
-
-## Sync Mechanism Detail
-
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                     bd_land: Three-Way Branch Sync                       │
-└──────────────────────────────────────────────────────────────────────────┘
-
-    Step 1: Detect branches
-    ├─ Find default branch (main or master)
-    ├─ Check if beads-sync exists
-    └─ Remember current branch
-
-                      ▼
-
-    Step 2: Sync beads-sync → default branch
-    ├─ git checkout main
-    ├─ git merge beads-sync --no-ff -m "merge: sync beads tracking"
-    ├─ git push origin main
-    └─ Result: main now has latest beads data
-
-                      ▼
-
-    Step 3: Sync default → current branch (if different)
-    ├─ git checkout <current-branch>
-    ├─ git merge main --no-ff -m "merge: sync from main"
-    ├─ git push origin <current-branch>
-    └─ Result: current branch synced with main + beads data
-
-                      ▼
-
-    Step 4: Report success
-    └─ "✅ All synced. Ready to continue working."
-
-
-┌──────────────────────────────────────────────────────────────────────────┐
-│                         Branch State After Sync                          │
-└──────────────────────────────────────────────────────────────────────────┘
-
-    beads-sync:  A──B──C──D──E──F
-                              │
-                              └──┐
-                                 ▼
-    main:        A──B──C──D──E──F  (synced)
-                              │
-                              └──┐
-                                 ▼
-    dev:         A──B──C──D──E──F  (synced)
-
-    All branches have identical .beads/issues.jsonl
-```
+| Mode | Use When | Behavior |
+|------|----------|----------|
+| `warning` (default) | Learning, want manual control | Asks before syncing |
+| `auto` | Experienced, trust automation | Syncs silently |
+| `block` | Team enforcement, strict discipline | Blocks push until synced |
+| `off` | Solo work, no daemon | Skips all checks |
 
 ---
 
 ## Error Handling Flow
 
 ```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                    What If Something Goes Wrong?                         │
-└──────────────────────────────────────────────────────────────────────────┘
-
     Problem Detected
          │
          ▼
@@ -233,10 +139,6 @@
 ## Background Sync Details
 
 ```
-┌──────────────────────────────────────────────────────────────────────────┐
-│              bd_auto_sync: Background Sync Implementation                │
-└──────────────────────────────────────────────────────────────────────────┘
-
     git commit -m "..."  →  Post-commit hook triggered
                                       │
                                       ▼
@@ -250,11 +152,8 @@
                     ▼                                   ▼
             Main Process                        Background Process
             Continues                                   │
-            (git commit                                 ▼
-             completes                     Check if beads-sync exists
-             immediately)                               │
-                                                        ▼
-                                            Check divergence (ahead count)
+            (prompt returns                             ▼
+             immediately)                   Check beads-sync divergence
                                                         │
                                     ┌───────────────────┴───────────────┐
                                     │                                   │
@@ -263,33 +162,9 @@
                                     │                                   │
                                     ▼                                   ▼
                             Run bd_land                          Skip (no-op)
-                            (in background)                            │
-                                    │                                   │
-                                    ▼                                   │
-                            Log to .beads/logs/sync.log                 │
-                                    │                                   │
-                                    └───────────────────────────────────┘
-                                                    │
-                                                    ▼
-                                            Background complete
-                                            (parent process unaware)
-
-
-    Developer Experience:
-    ─────────────────────
-    $ git commit -m "feat: add auth"
-    [main abc123] feat: add auth
-     2 files changed, 50 insertions(+)
-    $ ← Prompt returns immediately, sync happens in background
-
-    Check sync log:
-    $ tail .beads/logs/sync.log
-    === 2026-01-29 14:32:15 ===
-    Syncing: beads-sync is 1 commits ahead
-    [sync output...]
-    Complete: 2026-01-29 14:32:18
+                            Log to .beads/logs/sync.log
 ```
 
 ---
 
-**For complete reference, see `src/modules/bmm/sub-modules/beads/beads-reference.md`**
+**For complete reference, see `src/bmm-skills/sub-modules/beads/beads-reference.md`**

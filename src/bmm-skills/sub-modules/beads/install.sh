@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# BMAD + Beads Integration Installer (v4.0 — v6.2.0 skills architecture)
+# BMAD + Beads Integration Installer (v5.0 — v6.2.1 skills architecture)
 # Project-local configuration with opt-in shell integration
 
 set -e
@@ -173,19 +173,14 @@ if [ -z "$(git config beads.workflow-mode 2>/dev/null)" ]; then
 fi
 
 # Check daemon configuration and warn about common issues
-if command -v bd >/dev/null 2>&1; then
-  daemon_pid=$(pgrep -f "bd.*daemon" 2>/dev/null | head -1)
-  if [ -n "$daemon_pid" ]; then
-    daemon_cmd=$(ps -p "$daemon_pid" -o args= 2>/dev/null)
-
-    # Warn if daemon using --auto-push (conflicts with pre-push hook)
-    if echo "$daemon_cmd" | grep -q -- "--auto-push"; then
-      echo ""
-      echo "  ⚠️  WARNING: Daemon is using --auto-push"
-      echo "     This conflicts with pre-push hook and causes race conditions."
-      echo "     Fix: bd daemon --stop && bd daemon --start --interval 5s --auto-commit --auto-pull"
-      echo ""
-    fi
+# (bd CLI guaranteed available — checked at startup)
+daemon_pid=$(pgrep -f "bd.*daemon" 2>/dev/null | head -1)
+if [ -n "$daemon_pid" ]; then
+  daemon_cmd=$(ps -p "$daemon_pid" -o args= 2>/dev/null)
+  if echo "$daemon_cmd" | grep -q -- "--auto-push"; then
+    echo ""
+    echo "  ⚠️  WARNING: Daemon using --auto-push (conflicts with pre-push hook)"
+    echo "     Fix: bd daemon --stop && bd daemon --start --interval 5s --auto-commit --auto-pull"
   fi
 fi
 
@@ -256,26 +251,12 @@ fi
 
 # 9. Summary
 echo ""
-echo "=== Installation Complete ==="
+echo "=== Installation Complete (v$(cat .beads/.bmad-version 2>/dev/null || echo '?')) ==="
 echo ""
-echo "Configuration:"
-echo "  Project-local: .beads/lib/bmad-aliases.sh"
-echo "  Version: $(cat .beads/.bmad-version 2>/dev/null || echo 'unknown')"
+echo "  Aliases:   .beads/lib/bmad-aliases.sh (auto-loaded by hooks)"
+echo "  Reference: docs/beads-reference.md"
+echo "  Agents:    .beads/AGENTS.md"
 echo ""
-echo "Next Steps:"
-echo ""
-echo "  Aliases work automatically in git hooks."
-echo "  To use in shell, manually source when needed:"
-echo "    source .beads/lib/bmad-aliases.sh"
-echo ""
-echo "Key Commands:"
-echo "  bd_preflight  - Check if ready to push"
-echo "  bd_health     - System health check"
-echo "  bd_land       - Sync branches"
-echo "  bd list       - Show all Beads items (native)"
-echo "  bd ready      - Show ready work (native)"
-echo ""
-echo "Documentation:"
-echo "  docs/beads-reference.md       - Full reference (sync, troubleshooting)"
-echo "  .beads/AGENTS.md              - Agent guidance"
+echo "  Key commands: bd_health, bd_preflight, bd_land, bd list, bd ready"
+echo "  Shell usage:  source .beads/lib/bmad-aliases.sh"
 echo ""

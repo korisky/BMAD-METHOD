@@ -13,7 +13,6 @@
   - No Beads-specific modifications
 
 - **ver_X.X.X** (dev branches): Beads integration work
-  - Example: `ver_0.0.4`
   - Contains Beads sub-module integration
   - Merges from curated `main`
   - Far fewer conflicts due to curation in sync branches
@@ -45,14 +44,12 @@ git merge upstream/main  # Or: git merge v6.0.0-Beta.5
 **Step 3: Validate sync branch**
 ```bash
 npm test  # Must pass
-npx /Users/roylic/VSCodeProjects/BMAD-METHOD-Beads-Integration install  # Test installer in clean project
+npx . install  # Test installer in clean project
 git log --oneline main..HEAD  # Review changes
 ```
 
 **Step 4: Merge to main**
 ```bash
-# Return to main repo
-cd /Users/roylic/VSCodeProjects/BMAD-METHOD-Beads-Integration
 git checkout main
 git merge upstream-sync/$(date +%Y-%m-%d)
 git tag -a sync-$(date +%Y-%m-%d) -m "Curated upstream sync"
@@ -61,7 +58,7 @@ git push origin main --tags
 
 **Step 5: Merge main to dev branch**
 ```bash
-git checkout ver_0.0.4  # Or current dev branch
+git checkout ver_X.X.X  # Current dev branch
 git merge main  # Far fewer conflicts
 
 # Resolve Beads-specific conflicts only
@@ -124,7 +121,7 @@ git mergetool  # Manual resolution
 
 **Fork-specific fields in package.json:**
 - `name`: `bmad-method-beads-experimental`
-- `version`: `6.2.0-beads.X.Y.Z`
+- `version`: `6.2.1-beads.X.Y.Z`
 - `bin`: `bmad-beads`, `bmad-beads-method`
 
 **After any package.json merge:**
@@ -138,22 +135,10 @@ npm install  # Regenerate with fork identity
 After any upstream sync, **MUST** test installation in a clean target project:
 
 ```bash
-# Create clean test directory
-mkdir -p ~/test-bmad-beads-sync
-cd ~/test-bmad-beads-sync
-npm init -y
-
-# Test installation
-npx /Users/roylic/VSCodeProjects/BMAD-METHOD-Beads-Integration install
-
-# Verify critical components
-# - Agents install correctly
-# - Workflows accessible
-# - Beads integration hooks work
-# - No errors from installer refactoring
+cd /tmp/test-bmad-project && npm init -y
+npx /path/to/repo install
+# Verify: agents, workflows, Beads hooks all work correctly
 ```
-
-This is non-negotiable - this is an installer/framework repository that affects all downstream projects.
 
 ## Rationale
 
@@ -173,28 +158,12 @@ This is non-negotiable - this is an installer/framework repository that affects 
 - Main serves as pre-vetted integration point
 - Reduces conflicts and testing burden on dev branches
 
-## Version Tracking
-
-**Current sync status:**
-- Last upstream sync: *(to be updated)*
-- Upstream version: *(to be updated)*
-- Sync tag: *(to be updated)*
-
-**Update this section after each sync:**
-```bash
-# After successful sync to main
-echo "- Last upstream sync: $(date +%Y-%m-%d)" >> FORK_STRATEGY.md
-echo "- Upstream version: v6.0.0-Beta.5" >> FORK_STRATEGY.md
-echo "- Sync tag: sync-$(date +%Y-%m-%d)" >> FORK_STRATEGY.md
-```
-
 ## Critical Files to Watch
 
 **High-impact files from upstream:**
 - `tools/cli/installers/lib/core/dependency-resolver.js` - CRITICAL bug fixes
 - `tools/cli/installers/lib/core/installer.js` - Installation logic
-- `tools/schema/agent.js` - Schema validation (affects all agents)
-- `test/test-agent-schema.js` - Test infrastructure
+- `tools/validate-skills.js` - Skill validation (affects all skills)
 
 **Fork-specific files to protect:**
 - `src/bmm-skills/sub-modules/beads/` - Beads integration
