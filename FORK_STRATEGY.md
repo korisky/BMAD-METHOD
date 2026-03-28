@@ -81,8 +81,8 @@ git worktree remove .worktrees/upstream-sync-$(date +%Y-%m-%d)
 ### ALWAYS KEEP (Core Framework)
 - `src/bmm-skills/` - BMM skills (phases 1-4)
 - `src/core-skills/` - Core skills
-- `tools/cli/installers/` - **CRITICAL** installer code
-- `tools/cli/lib/` - CLI libraries
+- `tools/installer/` - **CRITICAL** installer code (restructured in v6.2.2)
+- `.claude-plugin/` - Plugin marketplace metadata
 - `tools/validate-*.js` - Validators
 - `test/` - Tests and fixtures
 - `docs/` - Framework documentation
@@ -121,7 +121,7 @@ git mergetool  # Manual resolution
 
 **Fork-specific fields in package.json:**
 - `name`: `bmad-method-beads-experimental`
-- `version`: `6.2.1-beads.X.Y.Z`
+- `version`: `<upstream>-beads.X.Y.Z` (e.g. `6.2.2-beads.0.3.0`)
 - `bin`: `bmad-beads`, `bmad-beads-method`
 
 **After any package.json merge:**
@@ -134,9 +134,9 @@ npm install  # Regenerate with fork identity
 
 | Field | Value |
 |-------|-------|
-| **Upstream base** | BMAD-METHOD v6.2.1 |
-| **Fork version** | `6.2.1-beads.0.3.0` |
-| **Last upstream sync** | 2026-03-27 |
+| **Upstream base** | BMAD-METHOD v6.2.2 |
+| **Fork version** | `6.2.2-beads.0.3.0` |
+| **Last upstream sync** | 2026-03-28 |
 | **Dev branch** | `ver_0.3.0` |
 | **Beads sub-module** | see `src/bmm-skills/sub-modules/beads/config.yaml` |
 
@@ -175,8 +175,9 @@ npx /path/to/repo install
 ## Critical Files to Watch
 
 **High-impact files from upstream:**
-- `tools/cli/installers/lib/core/dependency-resolver.js` - CRITICAL bug fixes
-- `tools/cli/installers/lib/core/installer.js` - Installation logic
+- `tools/installer/core/installer.js` - Main installer orchestrator
+- `tools/installer/modules/official-modules.js` - Core + BMM module handling
+- `tools/installer/core/install-paths.js` - Path resolution
 - `tools/validate-skills.js` - Skill validation (affects all skills)
 
 **Fork-specific files to protect:**
